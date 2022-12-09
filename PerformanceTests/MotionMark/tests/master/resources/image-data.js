@@ -143,7 +143,7 @@ var ImageDataStage = Utilities.createSubclass(Stage,
     animate: function(timeDelta) {
         for (var i = 0; i < this._offsetIndex; ++i) {
             var element = this.testElements[i];
-            var context = element.getContext("2d");
+            var context = element.getContext("2d", { willReadFrequently: true });
 
             // Get image data
             var imageData = context.getImageData(0, 0, this.imageWidth, this.imageHeight);
@@ -170,7 +170,7 @@ var ImageDataStage = Utilities.createSubclass(Stage,
                 context.putImageData(imageData, 0, 0);
             else {
                 this._refreshElement(element);
-                element.getContext("2d").drawImage(Stage.randomElementInArray(this.images), 0, 0, this.imageWidth, this.imageHeight);
+                element.getContext("2d", { willReadFrequently: true }).drawImage(Stage.randomElementInArray(this.images), 0, 0, this.imageWidth, this.imageHeight);
             }
         }
     },
