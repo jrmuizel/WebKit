@@ -301,10 +301,14 @@ public:
     // finalizeCodeWithoutDisassembly() directly if you have your own way of
     // displaying disassembly.
 
-    template<PtrTag tag>
-    CodeRef<tag> finalizeCodeWithoutDisassembly()
+    template<PtrTag tag, typename... Args>
+    CodeRef<tag> finalizeCodeWithoutDisassembly(const char *format, Args... args)
     {
-        return finalizeCodeWithoutDisassemblyImpl().template retagged<tag>();
+        ALLOW_NONLITERAL_FORMAT_BEGIN
+        IGNORE_WARNINGS_BEGIN("format-security")
+        return finalizeCodeWithoutDisassemblyImpl(format, args...).template retagged<tag>();
+        IGNORE_WARNINGS_END
+        ALLOW_NONLITERAL_FORMAT_END
     }
 
     template<PtrTag tag, typename... Args>
@@ -345,7 +349,7 @@ ALLOW_NONLITERAL_FORMAT_END
     void setIsThunk() { m_isThunk = true; }
 
 private:
-    JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithoutDisassemblyImpl();
+    JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithoutDisassemblyImpl(const char* format, ...) WTF_ATTRIBUTE_PRINTF(2, 3);
     JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithDisassemblyImpl(bool dumpDisassembly, const char* format, ...) WTF_ATTRIBUTE_PRINTF(3, 4);
 
 #if ENABLE(BRANCH_COMPACTION)
@@ -435,9 +439,7 @@ private:
 #define FINALIZE_CODE_IF(condition, linkBufferReference, resultPtrTag, ...) \
     (UNLIKELY((condition) || JSC::Options::logJIT()) \
         ? (linkBufferReference).finalizeCodeWithDisassembly<resultPtrTag>((condition), __VA_ARGS__) \
-        : (UNLIKELY(JSC::Options::logJITCodeForPerf()) \
-            ? (linkBufferReference).finalizeCodeWithDisassembly<resultPtrTag>(false, __VA_ARGS__) \
-            : (linkBufferReference).finalizeCodeWithoutDisassembly<resultPtrTag>()))
+        : (linkBufferReference).finalizeCodeWithoutDisassembly<resultPtrTag>(__VA_ARGS__))
 
 #define FINALIZE_CODE_FOR(codeBlock, linkBufferReference, resultPtrTag, ...)  \
     FINALIZE_CODE_IF((shouldDumpDisassemblyFor(codeBlock) || Options::asyncDisassembly()), linkBufferReference, resultPtrTag, __VA_ARGS__)

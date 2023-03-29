@@ -39,37 +39,45 @@ namespace JSC {
 size_t LinkBuffer::s_profileCummulativeLinkedSizes[LinkBuffer::numberOfProfiles];
 size_t LinkBuffer::s_profileCummulativeLinkedCounts[LinkBuffer::numberOfProfiles];
 
-LinkBuffer::CodeRef<LinkBufferPtrTag> LinkBuffer::finalizeCodeWithoutDisassemblyImpl()
+LinkBuffer::CodeRef<LinkBufferPtrTag> LinkBuffer::finalizeCodeWithoutDisassemblyImpl(const char* format, ...)
 {
     performFinalization();
     
     ASSERT(m_didAllocate);
-    if (m_executableMemory)
-        return CodeRef<LinkBufferPtrTag>(*m_executableMemory);
-    
-    return CodeRef<LinkBufferPtrTag>::createSelfManagedCodeRef(m_code);
-}
-
-LinkBuffer::CodeRef<LinkBufferPtrTag> LinkBuffer::finalizeCodeWithDisassemblyImpl(bool dumpDisassembly, const char* format, ...)
-{
-    CodeRef<LinkBufferPtrTag> result = finalizeCodeWithoutDisassemblyImpl();
+    LinkBuffer::CodeRef<LinkBufferPtrTag> result;
+    if (m_executableMemory) {
+        result = CodeRef<LinkBufferPtrTag>(*m_executableMemory);
+    } else {
+	result = CodeRef<LinkBufferPtrTag>::createSelfManagedCodeRef(m_code);
+    }
 
     if (Options::logJITCodeForPerf()) {
         StringPrintStream out;
         va_list argList;
-        va_start(argList, format);
         va_start(argList, format);
         out.vprintf(format, argList);
         va_end(argList);
         PerfLog::log(out.toCString(), result.code().untaggedPtr<const uint8_t*>(), result.size());
     }
 
+    return result;
+}
+
+LinkBuffer::CodeRef<LinkBufferPtrTag> LinkBuffer::finalizeCodeWithDisassemblyImpl(bool dumpDisassembly, const char* format, ...)
+{
+    va_list argList;
+    va_start(argList, format);
+
+    ALLOW_NONLITERAL_FORMAT_BEGIN
+    IGNORE_WARNINGS_BEGIN("format-security")
+    CodeRef<LinkBufferPtrTag> result = finalizeCodeWithoutDisassemblyImpl(format, argList);
+    IGNORE_WARNINGS_END
+    ALLOW_NONLITERAL_FORMAT_END
+
     bool justDumpingHeader = !dumpDisassembly || m_alreadyDisassembled;
 
     StringPrintStream out;
     out.printf("Generated JIT code for ");
-    va_list argList;
-    va_start(argList, format);
 
     if (m_isThunk) {
         va_list preflightArgs;
