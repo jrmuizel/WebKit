@@ -476,13 +476,14 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::valueIsFalseyGenerator(VM& vm)
 
     constexpr bool shouldCheckMasqueradesAsUndefined = true;
 
-    jit.tagReturnAddress();
+    jit.emitFunctionPrologue();
 
     loadGlobalObject(jit, globalObjectGPR);
     jit.move(TrustedImm32(1), regT0);
     auto isFalsey = jit.branchIfFalsey(vm, valueJSR, scratch1GPR, scratch2GPR, fpRegT0, fpRegT1, shouldCheckMasqueradesAsUndefined, globalObjectGPR);
     jit.move(TrustedImm32(0), regT0);
     isFalsey.link(&jit);
+    jit.emitFunctionEpilogue();
     jit.ret();
 
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID, LinkBuffer::Profile::ExtraCTIThunk);

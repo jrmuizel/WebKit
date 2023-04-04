@@ -1730,7 +1730,7 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::generateOpGetFromScopeThunk(VM& vm)
 
     CCallHelpers jit;
 
-    jit.tagReturnAddress();
+    jit.emitFunctionPrologue();
 
     JumpList slowCase;
 
@@ -1840,10 +1840,15 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::generateOpGetFromScopeThunk(VM& vm)
 
     static_assert(ValueProfile::numberOfBuckets == 1);
     jit.storeValue(returnValueJSR, Address(metadataGPR, Metadata::offsetOfProfile() + ValueProfile::offsetOfFirstBucket()));
+    jit.emitFunctionEpilogue();
     jit.ret();
 
+    slowCase.link(&jit);
+    jit.emitFunctionEpilogue();
+    Jump slowCaseTailCall = jit.jump();
+
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID, LinkBuffer::Profile::Thunk);
-    patchBuffer.link(slowCase, CodeLocationLabel(vm.getCTIStub(slow_op_get_from_scopeGenerator).retaggedCode<NoPtrTag>()));
+    patchBuffer.link(slowCaseTailCall, CodeLocationLabel(vm.getCTIStub(slow_op_get_from_scopeGenerator).retaggedCode<NoPtrTag>()));
     return FINALIZE_THUNK(patchBuffer, JITThunkPtrTag, "get_from_scope thunk");
 }
 
