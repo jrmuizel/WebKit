@@ -139,12 +139,8 @@ struct CodeLoadRecord {
 
 PerfLog& PerfLog::singleton()
 {
-    static PerfLog* logger;
-    static std::once_flag onceKey;
-    std::call_once(onceKey, [] {
-        logger = new PerfLog;
-    });
-    return *logger;
+    static PerfLog logger;
+    return logger;
 }
 
 static inline uint64_t generateTimestamp()
@@ -237,7 +233,6 @@ void PerfLog::log(CString&& name, const uint8_t* executableAddress, size_t size)
     logger.write(&record, sizeof(JITDump::CodeLoadRecord));
     logger.write(name.data(), name.length() + 1);
     logger.write(executableAddress, size);
-    logger.flush();
 
     dataLogLnIf(PerfLogInternal::verbose, name, " [", record.codeIndex, "] ", RawPointer(executableAddress), "-", RawPointer(executableAddress + size), " ", size);
 }

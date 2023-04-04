@@ -2079,9 +2079,8 @@ void linkPolymorphicCall(JSGlobalObject* globalObject, CallFrame* callFrame, Cal
     auto stubRoutine = adoptRef(*new PolymorphicCallStubRoutine(
         FINALIZE_CODE_FOR(
             callerCodeBlock, patchBuffer, JITStubRoutinePtrTag,
-            "Polymorphic call stub for %s, return point %p, targets %s",
-                isWebAssembly ? "WebAssembly" : toCString(*callerCodeBlock).data(), callLinkInfo.doneLocation().taggedPtr(),
-                toCString(listDump(callCases)).data()),
+            "Polymorphic call stub for %s",
+                isWebAssembly ? "WebAssembly" : toCString(callerCodeBlock->inferredName()).data()),
         vm, owner, callFrame->callerFrame(), callLinkInfo, callCases,
         WTFMove(fastCounts)));
 

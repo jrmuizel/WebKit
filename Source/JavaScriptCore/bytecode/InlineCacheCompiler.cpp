@@ -3283,7 +3283,7 @@ AccessGenerationResult InlineCacheCompiler::regenerate(const GCSafeConcurrentJSL
 
     MacroAssemblerCodeRef<JITStubRoutinePtrTag> code = FINALIZE_CODE_FOR(
         codeBlock, linkBuffer, JITStubRoutinePtrTag,
-        "%s", toCString("Access stub for ", *codeBlock, " ", m_stubInfo->codeOrigin, "with start: ", m_stubInfo->startLocation, " with return point ", successLabel, ": ", listDump(cases)).data());
+        "%s", toCString("Access stub for ", codeBlock->inferredName()).data());
 
     stub = createICJITStubRoutine(code, WTFMove(keys), WTFMove(weakStructures), vm(), codeBlock, doesCalls, cellsToMark, WTFMove(m_callLinkInfos), codeBlockThatOwnsExceptionHandlers, callSiteIndexForExceptionHandling);
 
