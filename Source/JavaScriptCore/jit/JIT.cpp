@@ -779,10 +779,6 @@ std::tuple<std::unique_ptr<LinkBuffer>, RefPtr<BaselineJITCode>> JIT::compileAnd
     if (m_disassembler)
         m_disassembler->setStartOfCode(entryLabel);
 
-    // Just add a little bit of randomness to the codegen
-    if (random() & 1)
-        nop();
-
     emitFunctionPrologue();
     jitAssertCodeBlockOnCallFrameWithType(regT2, JITType::BaselineJIT);
     jitAssertCodeBlockMatchesCurrentCalleeCodeBlockOnCallFrame(regT1, regT2, *m_unlinkedCodeBlock);
