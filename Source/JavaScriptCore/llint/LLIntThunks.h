@@ -71,11 +71,17 @@ inline EncodedJSValue vmEntryToWasm(void* code, VM* vm, ProtoCallFrame* frame)
 namespace LLInt {
 
 MacroAssemblerCodeRef<JSEntryPtrTag> functionForCallEntryThunk();
+MacroAssemblerCodeRef<JSEntryPtrTag> functionForCallEntryThunk(const char* thunkName);
 MacroAssemblerCodeRef<JSEntryPtrTag> functionForConstructEntryThunk();
+MacroAssemblerCodeRef<JSEntryPtrTag> functionForConstructEntryThunk(const char* thunkName);
 MacroAssemblerCodeRef<JSEntryPtrTag> functionForCallArityCheckThunk();
+MacroAssemblerCodeRef<JSEntryPtrTag> functionForCallArityCheckThunk(const char* thunkName);
 MacroAssemblerCodeRef<JSEntryPtrTag> functionForConstructArityCheckThunk();
+MacroAssemblerCodeRef<JSEntryPtrTag> functionForConstructArityCheckThunk(const char* thunkName);
 MacroAssemblerCodeRef<JSEntryPtrTag> evalEntryThunk();
+MacroAssemblerCodeRef<JSEntryPtrTag> evalEntryThunk(const char* thunkName);
 MacroAssemblerCodeRef<JSEntryPtrTag> programEntryThunk();
+MacroAssemblerCodeRef<JSEntryPtrTag> programEntryThunk(const char* thunkName);
 MacroAssemblerCodeRef<JSEntryPtrTag> moduleProgramEntryThunk();
 MacroAssemblerCodeRef<JSEntryPtrTag> getHostCallReturnValueThunk();
 MacroAssemblerCodeRef<JSEntryPtrTag> genericReturnPointThunk(OpcodeSize);

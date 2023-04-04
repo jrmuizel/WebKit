@@ -33,6 +33,9 @@
 #include "LLIntThunks.h"
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "StackAlignment.h"
+#include "CodeBlockWithJITType.h"
+
+#include <iostream>
 
 namespace JSC { namespace LLInt {
 
@@ -55,8 +58,34 @@ static MacroAssemblerCodeRef<JSEntryPtrTag> entrypointTrampoline(PtrType address
 static void setFunctionEntrypoint(CodeBlock* codeBlock)
 {
     CodeSpecializationKind kind = codeBlock->specializationKind();
-    
+
 #if ENABLE(JIT)
+    if (Options::useJIT() && Options::logJITCodeForPerf()) {
+      const char* thunkName = toCString(CodeBlockWithJITType(codeBlock, JITType::InterpreterThunk)).data();
+      if (kind == CodeForCall) {
+        DirectJITCode* jitCode;
+        auto callRef = functionForCallEntryThunk(thunkName);
+        auto callArityCheckRef = functionForCallArityCheckThunk(thunkName);
+        jitCode = new DirectJITCode(callRef, callArityCheckRef.code(), JITType::InterpreterThunk, JITCode::ShareAttribute::Shared);
+
+        codeBlock->setProfilerThunk(callRef);
+        codeBlock->setProfilerArityCheckThunk(callArityCheckRef);
+        codeBlock->setJITCode(*jitCode);
+        return;
+      }
+      ASSERT(kind == CodeForConstruct);
+
+      DirectJITCode* jitCode;
+      auto constructRef = functionForConstructEntryThunk(thunkName);
+      auto constructArityCheckRef = functionForConstructArityCheckThunk(thunkName);
+      jitCode = new DirectJITCode(constructRef, constructArityCheckRef.code(), JITType::InterpreterThunk, JITCode::ShareAttribute::Shared);
+
+      codeBlock->setProfilerThunk(constructRef);
+      codeBlock->setProfilerArityCheckThunk(constructArityCheckRef);
+      codeBlock->setJITCode(*jitCode);
+      return;
+    }
+    
     if (Options::useJIT()) {
         if (kind == CodeForCall) {
             static DirectJITCode* jitCode;
@@ -113,6 +142,15 @@ static void setFunctionEntrypoint(CodeBlock* codeBlock)
 static void setEvalEntrypoint(CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
+    if (Options::useJIT() && Options::logJITCodeForPerf()) {
+        const char* thunkName = toCString(CodeBlockWithJITType(codeBlock, JITType::InterpreterThunk)).data();
+        static NativeJITCode* jitCode;
+        MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = evalEntryThunk(thunkName);
+        jitCode = new NativeJITCode(codeRef, JITType::InterpreterThunk, Intrinsic::NoIntrinsic, JITCode::ShareAttribute::Shared);
+        codeBlock->setProfilerThunk(codeRef);
+        codeBlock->setJITCode(*jitCode);
+        return;
+    } else
     if (Options::useJIT()) {
         static NativeJITCode* jitCode;
         static std::once_flag onceKey;
@@ -140,6 +178,15 @@ static void setEvalEntrypoint(CodeBlock* codeBlock)
 static void setProgramEntrypoint(CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
+    if (Options::useJIT() && Options::logJITCodeForPerf()) {
+        const char* thunkName = toCString(CodeBlockWithJITType(codeBlock, JITType::InterpreterThunk)).data();
+        static NativeJITCode* jitCode;
+        MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = programEntryThunk(thunkName);
+        jitCode = new NativeJITCode(codeRef, JITType::InterpreterThunk, Intrinsic::NoIntrinsic, JITCode::ShareAttribute::Shared);
+        codeBlock->setProfilerThunk(codeRef);
+        codeBlock->setJITCode(*jitCode);
+        return;
+    } else
     if (Options::useJIT()) {
         static NativeJITCode* jitCode;
         static std::once_flag onceKey;

@@ -170,9 +170,16 @@ void StackVisitor::readNonInlinedFrame(CallFrame* callFrame, CodeOrigin* codeOri
     m_frame.m_wasmDistanceFromDeepestInlineFrame = 0;
 
     m_frame.m_codeBlock = callFrame->isWasmFrame() ? nullptr : callFrame->codeBlock();
-    m_frame.m_bytecodeIndex = !m_frame.codeBlock() ? BytecodeIndex(0)
+
+    // Check for a profiler interpreter thunk and set BC index to 0.
+    if (m_frame.codeBlock() &&
+        m_frame.codeBlock()->jitCodeIsProfilerThunk()) {
+      m_frame.m_bytecodeIndex = BytecodeIndex(0);
+    } else {
+      m_frame.m_bytecodeIndex = !m_frame.codeBlock() ? BytecodeIndex(0)
         : codeOrigin ? codeOrigin->bytecodeIndex()
         : callFrame->bytecodeIndex();
+    }
 
     RELEASE_ASSERT(!callFrame->isWasmFrame());
 }

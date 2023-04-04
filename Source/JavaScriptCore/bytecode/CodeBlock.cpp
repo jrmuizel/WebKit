@@ -168,34 +168,45 @@ CString CodeBlock::hashAsStringIfPossible() const
 
 void CodeBlock::dumpAssumingJITType(PrintStream& out, JITType jitType) const
 {
-    out.print(inferredName(), "#", hashAsStringIfPossible());
-    out.print(":[", RawPointer(this), "->");
-    if (!!m_alternative)
-        out.print(RawPointer(alternative()), "->");
-    out.print(RawPointer(ownerExecutable()), ", ", jitType, codeType());
 
+    out.print(jitType,": ");
+    if (inferredName().length() > 0) {
+      out.print(inferredName());
+    } else {
+      out.print("*");
+    }
+
+    out.print("[");
     if (codeType() == FunctionCode)
-        out.print(specializationKind());
-    out.print(", ", instructionsSize());
+      out.print(specializationKind());
     if (this->jitType() == JITType::BaselineJIT && m_shouldAlwaysBeInlined)
-        out.print(" (ShouldAlwaysBeInlined)");
+      out.print(" (ShouldAlwaysBeInlined)");
     if (ownerExecutable()->neverInline())
-        out.print(" (NeverInline)");
+      out.print(" (NeverInline)");
     if (ownerExecutable()->neverOptimize())
-        out.print(" (NeverOptimize)");
+      out.print(" (NeverOptimize)");
     else if (ownerExecutable()->neverFTLOptimize())
-        out.print(" (NeverFTLOptimize)");
+      out.print(" (NeverFTLOptimize)");
     if (ownerExecutable()->didTryToEnterInLoop())
-        out.print(" (DidTryToEnterInLoop)");
+      out.print(" (DidTryToEnterInLoop)");
     if (ownerExecutable()->isInStrictContext())
-        out.print(" (StrictMode)");
+      out.print(" (StrictMode)");
     if (m_didFailJITCompilation)
-        out.print(" (JITFail)");
+      out.print(" (JITFail)");
     if (this->jitType() == JITType::BaselineJIT && m_didFailFTLCompilation)
-        out.print(" (FTLFail)");
+      out.print(" (FTLFail)");
     if (this->jitType() == JITType::BaselineJIT && m_hasBeenCompiledWithFTL)
-        out.print(" (HadFTLReplacement)");
+      out.print(" (HadFTLReplacement)");
     out.print("]");
+
+
+    ScriptExecutable* exec = ownerExecutable();
+    const String url = exec->sourceURL();
+    if (!url.isEmpty()) {
+      out.printf(" %s:%d:%d", url.utf8().data(),
+                              exec->firstLine(),
+                              exec->startColumn()); 
+    }
 }
 
 void CodeBlock::dump(PrintStream& out) const
