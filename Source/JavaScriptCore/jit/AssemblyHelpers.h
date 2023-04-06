@@ -68,11 +68,11 @@ public:
     VM& vm() { return m_codeBlock->vm(); }
     AssemblerType_T& assembler() { return m_assembler; }
 
-    void prepareCallOperation(VM& vm)
+    void prepareCallOperation(VM& vm, GPRReg frame = GPRInfo::callFrameRegister)
     {
         UNUSED_PARAM(vm);
 #if !USE(BUILTIN_FRAME_ADDRESS) || ASSERT_ENABLED
-        storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
+        storePtr(frame, &vm.topCallFrame);
 #endif
     }
 
@@ -414,7 +414,7 @@ public:
     void restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(GPRReg vmGPR, GPRReg scratchGPR);
     void restoreCalleeSavesFromVMEntryFrameCalleeSavesBufferImpl(GPRReg entryFrame, const RegisterSet& skipList);
 
-    void copyLLIntBaselineCalleeSavesFromFrameOrRegisterToEntryFrameCalleeSavesBuffer(EntryFrame*&, const RegisterSet& usedRegisters = RegisterSetBuilder::stubUnavailableRegisters());
+    void copyLLIntBaselineCalleeSavesFromFrameOrRegisterToEntryFrameCalleeSavesBuffer(EntryFrame*&, bool derefFrame = false, const RegisterSet& usedRegisters = RegisterSetBuilder::stubUnavailableRegisters());
 
     void emitMaterializeTagCheckRegisters()
     {

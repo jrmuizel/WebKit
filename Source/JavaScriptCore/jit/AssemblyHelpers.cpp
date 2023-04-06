@@ -1629,7 +1629,7 @@ void AssemblyHelpers::emitRestoreCalleeSavesFor(const RegisterAtOffsetList* call
     spooler.finalizeFPR();
 }
 
-void AssemblyHelpers::copyLLIntBaselineCalleeSavesFromFrameOrRegisterToEntryFrameCalleeSavesBuffer(EntryFrame*& topEntryFrame, const RegisterSet& usedRegisters)
+void AssemblyHelpers::copyLLIntBaselineCalleeSavesFromFrameOrRegisterToEntryFrameCalleeSavesBuffer(EntryFrame*& topEntryFrame, bool derefFrame, const RegisterSet& usedRegisters)
 {
 #if NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
     // Copy saved calleeSaves on stack or unsaved calleeSaves in register to vm calleeSave buffer
@@ -1638,13 +1638,21 @@ void AssemblyHelpers::copyLLIntBaselineCalleeSavesFromFrameOrRegisterToEntryFram
     GPRReg temp1 = allocator.allocateScratchGPR();
     FPRReg fpTemp1 = allocator.allocateScratchFPR();
     GPRReg temp2 = allocator.allocateScratchGPR();
+    GPRReg temp3 = allocator.allocateScratchGPR();
     FPRReg fpTemp2 = allocator.allocateScratchFPR();
     RELEASE_ASSERT(!allocator.didReuseRegisters());
 
     loadPtr(&topEntryFrame, destBufferGPR);
     addPtr(TrustedImm32(EntryFrame::calleeSaveRegistersBufferOffset()), destBufferGPR);
+    GPRReg frame;
+    if (derefFrame) {
+	loadPtr(Address(framePointerRegister), temp3);	
+        frame = temp3;
+    } else {
+	frame = framePointerRegister;
+    }
 
-    CopySpooler spooler(*this, framePointerRegister, destBufferGPR, temp1, temp2, fpTemp1, fpTemp2);
+    CopySpooler spooler(*this, frame, destBufferGPR, temp1, temp2, fpTemp1, fpTemp2);
 
     RegisterAtOffsetList* allCalleeSaves = RegisterSetBuilder::vmCalleeSaveRegisterOffsets();
     const RegisterAtOffsetList* currentCalleeSaves = &RegisterAtOffsetList::llintBaselineCalleeSaveRegisters();

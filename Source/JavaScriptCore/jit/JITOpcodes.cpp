@@ -1259,7 +1259,9 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::op_enter_handlerGenerator(VM& vm)
         size_t startLocal = CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters();
         int startOffset = virtualRegisterForLocal(startLocal).offset();
         ASSERT(startOffset <= 0);
-        jit.subPtr(GPRInfo::callFrameRegister, TrustedImm32((-startOffset - 1) * sizeof(Register)), endGPR);
+	jit.move(stackPointerRegister, framePointerRegister);
+        jit.loadPtr(Address(framePointerRegister), endGPR);
+        jit.subPtr(endGPR, TrustedImm32((-startOffset - 1) * sizeof(Register)), endGPR);
         jit.mul32(TrustedImm32(sizeof(Register)), localsToInitGPR, localsToInitGPR);
         jit.subPtr(endGPR, localsToInitGPR, iteratorGPR);
         jit.moveTrustedValue(jsUndefined(), undefinedJSR);
@@ -1286,15 +1288,20 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::op_enter_handlerGenerator(VM& vm)
         initDone.link(&jit);
 #endif
     }
+    constexpr GPRReg tmpFrameGPR = regT5;
 
     // emitWriteBarrier(m_codeBlock).
     static_assert(noOverlap(canBeOptimizedGPR, argumentGPR1, argumentGPR2));
-    jit.loadPtr(addressFor(CallFrameSlot::codeBlock), argumentGPR1);
+    jit.loadPtr(Address(framePointerRegister), argumentGPR1);
+    jit.loadPtr(Address(argumentGPR1, VirtualRegister(CallFrameSlot::codeBlock).offset() * sizeof(Register)), argumentGPR1);
     Jump ownerIsRememberedOrInEden = jit.barrierBranch(vm, argumentGPR1, argumentGPR2);
 
     // op_enter is always at bytecodeOffset 0.
-    jit.store32(TrustedImm32(0), tagFor(CallFrameSlot::argumentCountIncludingThis));
-    jit.prepareCallOperation(vm);
+    jit.loadPtr(Address(framePointerRegister), jit.scratchRegister());
+    jit.store32(TrustedImm32(0), tagFor(CallFrameSlot::argumentCountIncludingThis, jit.scratchRegister()));
+    jit.move(jit.scratchRegister(), tmpFrameGPR);
+    jit.prepareCallOperation(vm, tmpFrameGPR);
+    //jit.prepareCallOperation(vm);
 
     // save canBeOptimizedGPR (arguments to call below are in registers on all platforms, so ok to stack this).
     // Note: we will do a call, so can't use pushToSave, as it does not maintain ABI stack alignment.
@@ -1317,11 +1324,13 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::op_enter_handlerGenerator(VM& vm)
 
         skipOptimize.append(jit.branchTest32(Zero, canBeOptimizedGPR));
 
-        jit.loadPtr(addressFor(CallFrameSlot::codeBlock), argumentGPR1);
+	jit.loadPtr(Address(framePointerRegister), argumentGPR1);
+	jit.loadPtr(Address(argumentGPR1, VirtualRegister(CallFrameSlot::codeBlock).offset() * sizeof(Register)), argumentGPR1);
         skipOptimize.append(jit.branchAdd32(Signed, TrustedImm32(Options::executionCounterIncrementForEntry()), Address(argumentGPR1, CodeBlock::offsetOfJITExecuteCounter())));
 
-        jit.copyLLIntBaselineCalleeSavesFromFrameOrRegisterToEntryFrameCalleeSavesBuffer(vm.topEntryFrame);
-        jit.prepareCallOperation(vm);
+        jit.copyLLIntBaselineCalleeSavesFromFrameOrRegisterToEntryFrameCalleeSavesBuffer(vm.topEntryFrame, true);
+	jit.loadPtr(Address(framePointerRegister), tmpFrameGPR);
+        jit.prepareCallOperation(vm, tmpFrameGPR);
 
 #if OS(WINDOWS) && CPU(X86_64)
         // On Windows, return values larger than 8 bytes are retuened via an implicit pointer passed as
@@ -1337,6 +1346,7 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::op_enter_handlerGenerator(VM& vm)
 #endif
         jit.move(TrustedImmPtr(&vm), vmPointerArgGPR);
         jit.move(TrustedImm32(0), bytecodeIndexBitsArgGPR);
+	//jit.loadPtr(Address(framePointerRegister), framePointerRegister);
 
         operationOptimizeCall = jit.call(OperationPtrTag);
 
@@ -1346,6 +1356,7 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::op_enter_handlerGenerator(VM& vm)
 #endif
 
         skipOptimize.append(jit.branchTestPtr(Zero, returnValueGPR));
+	jit.loadPtr(Address(framePointerRegister), framePointerRegister);
         jit.farJump(returnValueGPR, GPRInfo::callFrameRegister);
 
         skipOptimize.link(&jit);
