@@ -135,10 +135,14 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::slow_op_get_by_val_callSlowOperationT
     using BaselineJITRegisters::GetByVal::SlowPath::profileGPR;
 
     jit.emitCTIThunkPrologue();
+    jit.move(stackPointerRegister, framePointerRegister);
 
     // Call slow operation
-    jit.store32(bytecodeOffsetGPR, tagFor(CallFrameSlot::argumentCountIncludingThis));
-    jit.prepareCallOperation(vm);
+    jit.loadPtr(Address(framePointerRegister), jit.scratchRegister());
+    jit.store32(bytecodeOffsetGPR, tagFor(CallFrameSlot::argumentCountIncludingThis, jit.scratchRegister()));
+    constexpr GPRReg tmpFrameGPR = regT3;
+    jit.move(jit.scratchRegister(), tmpFrameGPR);
+    jit.prepareCallOperation(vm, tmpFrameGPR);
     loadGlobalObject(jit, globalObjectGPR);
     jit.setupArguments<SlowOperation>(globalObjectGPR, stubInfoGPR, profileGPR, baseJSR, propertyJSR);
     static_assert(preferredArgumentGPR<SlowOperation, 1>() == argumentGPR1, "Needed for branch to slow operation via StubInfo");
