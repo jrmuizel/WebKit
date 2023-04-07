@@ -1238,10 +1238,14 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::slow_op_put_by_id_callSlowOperationTh
     using BaselineJITRegisters::PutById::SlowPath::propertyGPR;
 
     jit.emitCTIThunkPrologue();
+    jit.move(stackPointerRegister, framePointerRegister);
 
     // Call slow operation
-    jit.store32(bytecodeOffsetGPR, tagFor(CallFrameSlot::argumentCountIncludingThis));
-    jit.prepareCallOperation(vm);
+    jit.loadPtr(Address(framePointerRegister), jit.scratchRegister());
+    jit.store32(bytecodeOffsetGPR, tagFor(CallFrameSlot::argumentCountIncludingThis, jit.scratchRegister()));
+    constexpr GPRReg tmpFrameGPR = regT1;
+    jit.move(jit.scratchRegister(), tmpFrameGPR);
+    jit.prepareCallOperation(vm, tmpFrameGPR);
     loadGlobalObject(jit, globalObjectGPR);
     jit.setupArguments<SlowOperation>(globalObjectGPR, stubInfoGPR, valueJSR, baseJSR, propertyGPR);
     static_assert(preferredArgumentGPR<SlowOperation, 1>() == argumentGPR1, "Needed for branch to slow operation via StubInfo");
