@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -284,6 +284,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BCA8CBDF11E578A000812FB7 /* MiniBrowser.xcconfig */;
 			buildSettings = {
+				ENABLE_HARDENED_RUNTIME = NO;
 			};
 			name = Debug;
 		};
@@ -291,6 +292,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BCA8CBDF11E578A000812FB7 /* MiniBrowser.xcconfig */;
 			buildSettings = {
+				ENABLE_HARDENED_RUNTIME = NO;
 			};
 			name = Release;
 		};
