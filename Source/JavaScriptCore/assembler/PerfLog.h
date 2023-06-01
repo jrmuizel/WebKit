@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if ENABLE(ASSEMBLER) && OS(LINUX)
+#if ENABLE(ASSEMBLER)
 
 #include <stdio.h>
 #include <wtf/Lock.h>
@@ -47,7 +47,9 @@ private:
     void flush() WTF_REQUIRES_LOCK(m_lock);
 
     FILE* m_file { nullptr };
+#if OS(LINUX)
     void* m_marker { nullptr };
+#endif
     uint64_t m_codeIndex { 0 };
     int m_fd { -1 };
     Lock m_lock;
@@ -55,4 +57,4 @@ private:
 
 } // namespace JSC
 
-#endif // ENABLE(ASSEMBLER) && OS(LINUX)
+#endif // ENABLE(ASSEMBLER)

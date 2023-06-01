@@ -26,10 +26,9 @@
 #include "config.h"
 #include "PerfLog.h"
 
-#if ENABLE(ASSEMBLER) && OS(LINUX)
+#if ENABLE(ASSEMBLER)
 
 #include <array>
-#include <elf.h>
 #include <fcntl.h>
 #include <mutex>
 #include <sys/mman.h>
@@ -41,6 +40,11 @@
 #include <wtf/MonotonicTime.h>
 #include <wtf/PageBlock.h>
 #include <wtf/ProcessID.h>
+#include <wtf/Seconds.h>
+
+#if OS(DARWIN)
+#include <pthread.h>
+#endif
 
 namespace JSC {
 
@@ -62,6 +66,15 @@ static constexpr uint32_t magic = 0x4a695444;
 #else
 static constexpr uint32_t magic = 0x4454694a;
 #endif
+
+// These are defined in `/include/uapi/linux/elf-em.h`.
+static constexpr uint32_t EM_386 = 3;
+static constexpr uint32_t EM_X86_64 = 62;
+static constexpr uint32_t EM_AARCH64 = 183;
+static constexpr uint32_t EM_ARM = 40;
+static constexpr uint32_t EM_MIPS_RS3_LE = 10;
+static constexpr uint32_t EM_MIPS = 8;
+static constexpr uint32_t EM_RISCV = 243;
 
 #if CPU(X86)
 static constexpr uint32_t elfMachine = EM_386;
@@ -141,22 +154,41 @@ static inline uint64_t generateTimestamp()
 
 static inline pid_t getCurrentThreadID()
 {
+#if OS(LINUX)
     return static_cast<pid_t>(syscall(__NR_gettid));
+#elif OS(DARWIN)
+  uint64_t tid;
+  if (pthread_threadid_np(nullptr, &tid) != 0) {
+    return 0;
+  }
+  // Truncate the tid to 32 bits. macOS thread IDs are usually small enough.
+  // And even if we do end up truncating, it doesn't matter much for Jitdump
+  // as long as the process ID is correct.
+  return pid_t(tid);
+#else
+    return 0;
+#endif
 }
 
 PerfLog::PerfLog()
 {
     {
         std::array<char, 1024> filename;
-        snprintf(filename.data(), filename.size() - 1, "jit-%d.dump", getCurrentProcessID());
+        snprintf(filename.data(), filename.size() - 1, "/tmp/jit-%d.dump", getCurrentProcessID());
         filename[filename.size() - 1] = '\0';
         m_fd = open(filename.data(), O_CREAT | O_TRUNC | O_RDWR, 0666);
+        if (m_fd == -1) {
+            fprintf(stdout, "Could not open the Jitdump file PID: %d!\n", getCurrentProcessID());
+            WTF::sleep(WTF::Seconds(20));
+        }
         RELEASE_ASSERT(m_fd != -1);
 
+#if OS(LINUX)
         // Linux perf command records this mmap operation in perf.data as a metadata to the JIT perf annotations.
         // We do not use this mmap-ed memory region actually.
         m_marker = mmap(nullptr, pageSize(), PROT_READ | PROT_EXEC, MAP_PRIVATE, m_fd, 0);
         RELEASE_ASSERT(m_marker != MAP_FAILED);
+#endif
 
         m_file = fdopen(m_fd, "wb");
         RELEASE_ASSERT(m_file);
@@ -212,4 +244,4 @@ void PerfLog::log(CString&& name, const uint8_t* executableAddress, size_t size)
 
 } // namespace JSC
 
-#endif // ENABLE(ASSEMBLER) && OS(LINUX)
+#endif // ENABLE(ASSEMBLER)

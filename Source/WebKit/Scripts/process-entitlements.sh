@@ -195,6 +195,9 @@ function webcontent_sandbox_entitlements()
 
 function mac_process_webcontent_shared_entitlements()
 {
+    plistbuddy Add :com.apple.security.cs.allow-dyld-environment-variables bool YES
+    plistbuddy Add :com.apple.security.files.all bool YES
+
     if [[ "${WK_USE_RESTRICTED_ENTITLEMENTS}" == YES ]]
     then
         if (( "${TARGET_MAC_OS_X_VERSION_MAJOR}" >= 101400 ))
