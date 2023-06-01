@@ -83,8 +83,8 @@ void AuxiliaryProcess::initialize(const AuxiliaryProcessInitializationParameters
 
     platformInitialize(parameters);
 
-    SandboxInitializationParameters sandboxParameters;
-    initializeSandbox(parameters, sandboxParameters);
+    // SandboxInitializationParameters sandboxParameters;
+    // initializeSandbox(parameters, sandboxParameters);
 
     initializeProcess(parameters);
 
