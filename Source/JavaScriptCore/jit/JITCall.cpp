@@ -63,7 +63,7 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::returnFromBaselineGenerator(VM&)
     jit.ret();
 
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID, LinkBuffer::Profile::ExtraCTIThunk);
-    return FINALIZE_THUNK(patchBuffer, JITThunkPtrTag, "Baseline: op_ret_handler");
+    return FINALIZE_THUNK(patchBuffer, JITThunkPtrTag, "BaselineThunk: op_ret_handler");
 }
 
 template<typename Op>

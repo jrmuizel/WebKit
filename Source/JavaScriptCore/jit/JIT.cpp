@@ -717,7 +717,7 @@ MacroAssemblerCodeRef<JITThunkPtrTag> JIT::consistencyCheckGenerator(VM&)
     jit.ret();
 
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID, LinkBuffer::Profile::ExtraCTIThunk);
-    return FINALIZE_THUNK(patchBuffer, JITThunkPtrTag, "Baseline: generateConsistencyCheck");
+    return FINALIZE_THUNK(patchBuffer, JITThunkPtrTag, "BaselineThunk: generateConsistencyCheck");
 }
 
 void JIT::emitConsistencyCheck()
