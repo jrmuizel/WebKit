@@ -30,6 +30,7 @@
 #include "CCallHelpers.h"
 #include "CacheableIdentifierInlines.h"
 #include "CallFrameShuffler.h"
+#include "CodeBlockWithJITType.h"
 #include "DFGOperations.h"
 #include "DFGSpeculativeJIT.h"
 #include "DOMJITGetterSetter.h"
@@ -2079,8 +2080,8 @@ void linkPolymorphicCall(JSGlobalObject* globalObject, CallFrame* callFrame, Cal
     auto stubRoutine = adoptRef(*new PolymorphicCallStubRoutine(
         FINALIZE_CODE_FOR(
             callerCodeBlock, patchBuffer, JITStubRoutinePtrTag,
-            "Polymorphic call stub for %s",
-                isWebAssembly ? "WebAssembly" : toCString(callerCodeBlock->inferredName()).data()),
+            "PolymorphicCallStub%s",
+                isWebAssembly ? "WebAssembly" : toCString(CodeBlockWithJITType(callerCodeBlock, JITType::BaselineJIT)).data()),
         vm, owner, callFrame->callerFrame(), callLinkInfo, callCases,
         WTFMove(fastCounts)));
 
