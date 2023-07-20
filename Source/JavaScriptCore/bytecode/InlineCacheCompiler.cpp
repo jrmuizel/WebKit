@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "InlineCacheCompiler.h"
+#include "bytecode/CodeBlockWithJITType.h"
 
 #if ENABLE(JIT)
 
@@ -3283,7 +3284,7 @@ AccessGenerationResult InlineCacheCompiler::regenerate(const GCSafeConcurrentJSL
 
     MacroAssemblerCodeRef<JITStubRoutinePtrTag> code = FINALIZE_CODE_FOR(
         codeBlock, linkBuffer, JITStubRoutinePtrTag,
-        "%s", toCString("Access stub for ", codeBlock->inferredName()).data());
+        "PolymorphicAccessStub%s", toCString(CodeBlockWithJITType(codeBlock, JITType::BaselineJIT)).data());
 
     stub = createICJITStubRoutine(code, WTFMove(keys), WTFMove(weakStructures), vm(), codeBlock, doesCalls, cellsToMark, WTFMove(m_callLinkInfos), codeBlockThatOwnsExceptionHandlers, callSiteIndexForExceptionHandling);
 
