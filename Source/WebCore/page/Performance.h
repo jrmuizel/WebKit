@@ -39,6 +39,7 @@
 #include "ReducedResolutionSeconds.h"
 #include "ScriptExecutionContext.h"
 #include "Timer.h"
+#include "wtf/MonotonicTime.h"
 #include <variant>
 #include <wtf/ListHashSet.h>
 
@@ -77,6 +78,7 @@ public:
     DOMHighResTimeStamp now() const;
     DOMHighResTimeStamp timeOrigin() const;
     ReducedResolutionSeconds nowInReducedResolutionSeconds() const;
+    MonotonicTime convertToMonotonicTime(double timestamp) const;
 
     PerformanceNavigation* navigation();
     PerformanceTiming* timing();

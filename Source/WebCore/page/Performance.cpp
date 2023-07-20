@@ -86,6 +86,11 @@ DOMHighResTimeStamp Performance::timeOrigin() const
     return reduceTimeResolution(m_timeOrigin.approximateWallTime().secondsSinceEpoch()).milliseconds();
 }
 
+MonotonicTime Performance::convertToMonotonicTime(double timestamp) const
+{
+    return m_timeOrigin + Seconds::fromMilliseconds(timestamp);
+}
+
 ReducedResolutionSeconds Performance::nowInReducedResolutionSeconds() const
 {
     Seconds now = MonotonicTime::now() - m_timeOrigin;
@@ -94,9 +99,10 @@ ReducedResolutionSeconds Performance::nowInReducedResolutionSeconds() const
 
 Seconds Performance::reduceTimeResolution(Seconds seconds)
 {
-    double resolution = timePrecision.seconds();
-    double reduced = std::floor(seconds.seconds() / resolution) * resolution;
-    return Seconds(reduced);
+    // double resolution = timePrecision.seconds();
+    // double reduced = std::floor(seconds.seconds() / resolution) * resolution;
+    // return Seconds(reduced);
+    return seconds;
 }
 
 void Performance::allowHighPrecisionTime()

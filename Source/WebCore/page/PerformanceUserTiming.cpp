@@ -33,7 +33,10 @@
 #include "PerformanceMeasureOptions.h"
 #include "PerformanceTiming.h"
 #include "SerializedScriptValue.h"
+#include "wtf/MonotonicTime.h"
+#include "wtf/StringPrintStream.h"
 #include <JavaScriptCore/JSCJSValueInlines.h>
+#include <_types/_uint64_t.h>
 #include <wtf/SortedArrayMap.h>
 
 namespace WebCore {
@@ -146,6 +149,30 @@ ExceptionOr<double> PerformanceUserTiming::convertMarkToTimestamp(double mark) c
     return mark;
 }
 
+static CString getMarkerFilename() {
+    return toCString("/tmp/marker-", getpid(), ".txt");
+}
+
+// This emits markers to an external marker-[pid].txt file for use by an external profiler like samply or etw-gecko.
+static void maybeEmitExternalProfilerMarker(const String& measureName, MonotonicTime startTime, MonotonicTime endTime) {
+    static FILE* markerFile = getenv("WEBKIT_USE_PERFORMANCE_MARKER_FILE") ? fopen(getMarkerFilename().data(), "w+") : nullptr;
+    if (!markerFile) {
+        return;
+    }
+
+    uint64_t rawStart = startTime.secondsSinceEpoch().nanosecondsAs<uint64_t>();
+    uint64_t rawEnd = endTime.secondsSinceEpoch().nanosecondsAs<uint64_t>();
+
+    // Write a line for this measure to the marker file. The marker file uses a
+    // text-based format where every line is one marker, and each line has the
+    // format:
+    // `<raw_start_timestamp> <raw_end_timestamp> <measure_name>`
+    //
+    // The timestamp value is OS specific.
+    fprintf(markerFile, "%" PRIu64 " %" PRIu64 " %s\n", rawStart, rawEnd, toCString(measureName).data());
+    fflush(markerFile);
+}
+
 ExceptionOr<Ref<PerformanceMeasure>> PerformanceUserTiming::measure(const String& measureName, const String& startMark, const String& endMark)
 {
     double endTime;
@@ -165,7 +192,11 @@ ExceptionOr<Ref<PerformanceMeasure>> PerformanceUserTiming::measure(const String
         startTime = start.returnValue();
     } else
         startTime = 0.0;
-        
+
+    auto startTimeMonotonic = m_performance.convertToMonotonicTime(startTime);
+    auto endTimeMonotonic = m_performance.convertToMonotonicTime(endTime);
+    maybeEmitExternalProfilerMarker(measureName, startTimeMonotonic, endTimeMonotonic);
+
     auto measure = PerformanceMeasure::create(measureName, startTime, endTime, SerializedScriptValue::nullValue());
     if (measure.hasException())
         return measure.releaseException();
