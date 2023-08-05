@@ -668,17 +668,17 @@ namespace JSC {
     }
 
     inline EqualNode::EqualNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments)
-        : BinaryOpNode(location, ResultType::booleanType(), expr1, expr2, op_eq, rightHasAssignments)
+        : ThrowableBinaryOpNode(location, ResultType::booleanType(), expr1, expr2, op_eq, rightHasAssignments)
     {
     }
 
     inline NotEqualNode::NotEqualNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments)
-        : BinaryOpNode(location, ResultType::booleanType(), expr1, expr2, op_neq, rightHasAssignments)
+        : ThrowableBinaryOpNode(location, ResultType::booleanType(), expr1, expr2, op_neq, rightHasAssignments)
     {
     }
 
     inline StrictEqualNode::StrictEqualNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments)
-        : BinaryOpNode(location, ResultType::booleanType(), expr1, expr2, op_stricteq, rightHasAssignments)
+        : ThrowableBinaryOpNode(location, ResultType::booleanType(), expr1, expr2, op_stricteq, rightHasAssignments)
     {
     }
 

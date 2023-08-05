@@ -1394,7 +1394,7 @@ namespace JSC {
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = nullptr) final;
     };
 
-    class EqualNode final : public BinaryOpNode {
+    class EqualNode final : public ThrowableBinaryOpNode {
     public:
         EqualNode(const JSTokenLocation&, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments);
 
@@ -1402,12 +1402,12 @@ namespace JSC {
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = nullptr) final;
     };
 
-    class NotEqualNode final : public BinaryOpNode {
+    class NotEqualNode final : public ThrowableBinaryOpNode {
     public:
         NotEqualNode(const JSTokenLocation&, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments);
     };
 
-    class StrictEqualNode final : public BinaryOpNode {
+    class StrictEqualNode final : public ThrowableBinaryOpNode {
     public:
         StrictEqualNode(const JSTokenLocation&, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments);
 

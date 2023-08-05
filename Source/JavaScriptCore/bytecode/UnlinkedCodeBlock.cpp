@@ -184,7 +184,6 @@ inline void UnlinkedCodeBlock::getLineAndColumn(const ExpressionRangeInfo& info,
     } // switch
 }
 
-#ifndef NDEBUG
 static void dumpLineColumnEntry(size_t index, const JSInstructionStream& instructionStream, unsigned instructionOffset, unsigned line, unsigned column)
 {
     const auto instruction = instructionStream.at(instructionOffset);
@@ -218,7 +217,6 @@ void UnlinkedCodeBlock::dumpExpressionRangeInfo()
     }
     dataLog("}\n");
 }
-#endif
 
 void UnlinkedCodeBlock::expressionRangeForBytecodeIndex(BytecodeIndex bytecodeIndex,
     int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column) const

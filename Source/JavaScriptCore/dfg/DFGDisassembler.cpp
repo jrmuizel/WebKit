@@ -127,6 +127,10 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
             dumpDisassembly(out, disassemblyPrefix, linkBuffer, previousLabel, currentLabel, lastNodeForDisassembly);
             append(result, out, previousOrigin);
             previousOrigin = block->at(i)->origin.semantic;
+	    int divot; int startOffset; int endOffset; unsigned line; unsigned column;
+	    m_graph.m_codeBlock->expressionRangeForBytecodeIndex(previousOrigin.bytecodeIndex(),  divot, startOffset,  endOffset,line, column);
+            out.print("src(", previousOrigin.bytecodeIndex().offset(), "): ", divot, ", ", startOffset, ", ", endOffset, ", ", line, ", ", column, "\n");
+	    m_graph.m_codeBlock->dumpBytecode(out, previousOrigin.bytecodeIndex().offset());
             if (m_graph.dumpCodeOrigin(out, prefix, lastNode, block->at(i), &m_dumpContext)) {
                 append(result, out, previousOrigin);
                 previousOrigin = block->at(i)->origin.semantic;

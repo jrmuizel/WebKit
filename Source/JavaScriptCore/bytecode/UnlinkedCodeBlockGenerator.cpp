@@ -55,6 +55,7 @@ inline void UnlinkedCodeBlockGenerator::getLineAndColumn(const ExpressionRangeIn
 
 void UnlinkedCodeBlockGenerator::addExpressionInfo(unsigned instructionOffset, int divot, int startOffset, int endOffset, unsigned line, unsigned column)
 {
+    printf("addExpressionInfo %d %d %d\n", instructionOffset, line, column);
     if (divot > ExpressionRangeInfo::MaxDivot) {
         // Overflow has occurred, we can only give line number info for errors for this region
         divot = 0;

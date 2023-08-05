@@ -2741,6 +2741,8 @@ RegisterID* TypeOfResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
         generator.emitTDZCheckIfNecessary(var, local, nullptr);
         if (dst == generator.ignoredResult())
             return nullptr;
+	printf("TypeOfResolveNode: loc\n");
+	generator.emitExpressionInfo(position(), position(), position());
         return generator.emitTypeOf(generator.finalDestination(dst), local);
     }
 
@@ -2749,6 +2751,7 @@ RegisterID* TypeOfResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
     generator.emitTDZCheckIfNecessary(var, value.get(), nullptr);
     if (dst == generator.ignoredResult())
         return nullptr;
+    printf("TypeOfResolveNode: un\n");
     return generator.emitTypeOf(generator.finalDestination(dst, scope.get()), value.get());
 }
 
@@ -2760,6 +2763,9 @@ RegisterID* TypeOfValueNode::emitBytecode(BytecodeGenerator& generator, Register
         generator.emitNode(generator.ignoredResult(), m_expr);
         return nullptr;
     }
+    printf("TypeOfValueNode: emit\n");
+    generator.emitExpressionInfo(position(), position(), position());
+    printf("TypeOfValueNode: post emit\n");
     RefPtr<RegisterID> src = generator.emitNode(m_expr);
     return generator.emitTypeOf(generator.finalDestination(dst), src.get());
 }
@@ -3292,6 +3298,7 @@ RegisterID* StrictEqualNode::emitBytecode(BytecodeGenerator& generator, Register
     if (left->isString())
         std::swap(left, right);
 
+    generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     RefPtr<RegisterID> src1 = generator.emitNodeForLeftHandSide(left, m_rightHasAssignments, m_expr2->isPure(generator));
     RefPtr<RegisterID> src2 = generator.emitNode(right);
     return generator.emitEqualityOp<OpStricteq>(generator.finalDestination(dst, src1.get()), src1.get(), src2.get());

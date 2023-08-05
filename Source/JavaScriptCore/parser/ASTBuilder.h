@@ -1522,17 +1522,26 @@ ExpressionNode* ASTBuilder::makeBinaryNode(const JSTokenLocation& location, int 
     case BITAND:
         return makeBitAndNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
 
-    case EQEQ:
-        return new (m_parserArena) EqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
-
-    case NE:
-        return new (m_parserArena) NotEqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
-
-    case STREQ:
-        return new (m_parserArena) StrictEqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
-
-    case STRNEQ:
-        return new (m_parserArena) NotStrictEqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
+    case EQEQ: {
+        EqualNode* node = new (m_parserArena) EqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
+        setExceptionLocation(node, lhs.second.start, rhs.second.start, rhs.second.end);
+	return node;
+    }
+    case NE: {
+        NotEqualNode* node = new (m_parserArena) NotEqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
+        setExceptionLocation(node, lhs.second.start, rhs.second.start, rhs.second.end);
+	return node;
+    }
+    case STREQ: {
+        StrictEqualNode* node = new (m_parserArena) StrictEqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
+        setExceptionLocation(node, lhs.second.start, rhs.second.start, rhs.second.end);
+	return node;
+    }
+    case STRNEQ: {
+        NotStrictEqualNode* node = new (m_parserArena) NotStrictEqualNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
+        //setExceptionLocation(node, lhs.second.start, rhs.second.start, rhs.second.end);
+	return node;
+    }
 
     case LT:
         return new (m_parserArena) LessNode(location, lhs.first, rhs.first, rhs.second.hasAssignment);
