@@ -100,6 +100,7 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
     
     Node* lastNode = nullptr;
     MacroAssembler::Label previousLabel = m_startOfCode;
+    CodeLocationLabel<DisassemblyPtrTag> startOfCodeLocation = linkBuffer.locationOf<DisassemblyPtrTag>(m_startOfCode);
     for (size_t blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
         BasicBlock* block = m_graph.block(blockIndex);
         if (!block)
@@ -129,7 +130,10 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
             previousOrigin = block->at(i)->origin.semantic;
 	    int divot; int startOffset; int endOffset; unsigned line; unsigned column;
 	    m_graph.m_codeBlock->expressionRangeForBytecodeIndex(previousOrigin.bytecodeIndex(),  divot, startOffset,  endOffset,line, column);
-            out.print("src(", previousOrigin.bytecodeIndex().offset(), "): ", divot, ", ", startOffset, ", ", endOffset, ", ", line, ", ", column, "\n");
+            CodeLocationLabel<DisassemblyPtrTag> offsetLocation = linkBuffer.locationOf<DisassemblyPtrTag>(previousLabel); 
+	    uintptr_t offset = offsetLocation.dataLocation<uintptr_t>() - startOfCodeLocation.dataLocation<uintptr_t>();
+	    out.printf("src %lx:\n", offset);
+	    out.print("src[", m_graph.m_codeBlock->ownerExecutable()->sourceURL(), "], (", previousOrigin.bytecodeIndex().offset(), "): ", divot, ", ", startOffset, ", ", endOffset, ", ", line, ", ", column, "\n");
 	    m_graph.m_codeBlock->dumpBytecode(out, previousOrigin.bytecodeIndex().offset());
             if (m_graph.dumpCodeOrigin(out, prefix, lastNode, block->at(i), &m_dumpContext)) {
                 append(result, out, previousOrigin);
