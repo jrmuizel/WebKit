@@ -70,6 +70,7 @@ public:
     
     void dump(PrintStream&, LinkBuffer&);
     void dump(LinkBuffer&);
+    void dumpLines(LinkBuffer&);
     void reportToProfiler(Profiler::Compilation*, LinkBuffer&);
     
 private:

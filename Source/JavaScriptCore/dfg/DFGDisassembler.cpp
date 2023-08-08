@@ -33,6 +33,8 @@
 #include "Disassembler.h"
 #include "JSCJSValueInlines.h"
 #include "LinkBuffer.h"
+#include "PerfLog.h"
+#include <wtf/ProcessID.h>
 
 namespace JSC { namespace DFG {
 
@@ -101,6 +103,7 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
     Node* lastNode = nullptr;
     MacroAssembler::Label previousLabel = m_startOfCode;
     CodeLocationLabel<DisassemblyPtrTag> startOfCodeLocation = linkBuffer.locationOf<DisassemblyPtrTag>(m_startOfCode);
+    out.printf("startofcode %lx:\n", startOfCodeLocation.dataLocation<uintptr_t>());
     for (size_t blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
         BasicBlock* block = m_graph.block(blockIndex);
         if (!block)
@@ -154,6 +157,121 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
     append(result, out, previousOrigin);
     
     return result;
+}
+
+void Disassembler::dumpLines(LinkBuffer& linkBuffer)
+{
+
+   //record.codeAddress = bitwise_cast<uintptr_t>(executableAddress);
+
+   
+    StringPrintStream out;
+    Vector<JITDump::DebugEntry> result;
+    
+    CodeOrigin previousOrigin = CodeOrigin();
+    dumpHeader(out, linkBuffer);
+    //append(result, out, previousOrigin);
+    
+    m_graph.ensureCPSDominators();
+    m_graph.ensureCPSNaturalLoops();
+    
+    const char* prefix = "    ";
+    const char* disassemblyPrefix = "        ";
+    
+    Node* lastNode = nullptr;
+    MacroAssembler::Label previousLabel = m_startOfCode;
+    CodeLocationLabel<DisassemblyPtrTag> startOfCodeLocation = linkBuffer.locationOf<DisassemblyPtrTag>(m_startOfCode);
+    CString srcFile = m_graph.m_codeBlock->ownerExecutable()->sourceURL().ascii();
+		JITDump::DebugEntry entry;
+	    {
+		int divot; int startOffset; int endOffset; unsigned line; unsigned column;
+		m_graph.m_codeBlock->expressionRangeForBytecodeIndex(BytecodeIndex(0),  divot, startOffset,  endOffset,line, column);
+		entry.codeAddress = startOfCodeLocation.dataLocation<uintptr_t>();
+		entry.line = line;
+		entry.discrim = column;
+		result.append(entry);
+	    }
+
+    for (size_t blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+        BasicBlock* block = m_graph.block(blockIndex);
+        if (!block)
+            continue;
+        //append(result, out, previousOrigin);
+        m_graph.dumpBlockHeader(out, prefix, block, Graph::DumpLivePhisOnly, &m_dumpContext);
+        //append(result, out, previousOrigin);
+        //Node* lastNodeForDisassembly = block->at(0);
+        for (size_t i = 0; i < block->size(); ++i) {
+            MacroAssembler::Label currentLabel;
+            HashMap<Node*, MacroAssembler::Label>::iterator iter = m_labelForNode.find(block->at(i));
+            if (iter != m_labelForNode.end())
+                currentLabel = iter->value;
+            else {
+                // Dump the last instruction by using the first label of the next block
+                // as the end point. This case is hit either during peephole compare
+                // optimizations (the Branch won't have its own label) or if we have a
+                // forced OSR exit.
+                if (blockIndex + 1 < m_graph.numBlocks())
+                    currentLabel = m_labelForBlockIndex[blockIndex + 1];
+                else
+                    currentLabel = m_endOfMainPath;
+            }
+            //dumpDisassembly(out, disassemblyPrefix, linkBuffer, previousLabel, currentLabel, lastNodeForDisassembly);
+	    previousLabel = currentLabel;
+            //append(result, out, previousOrigin);
+            previousOrigin = block->at(i)->origin.semantic;
+            int divot; int startOffset; int endOffset; unsigned line; unsigned column;
+            m_graph.m_codeBlock->expressionRangeForBytecodeIndex(previousOrigin.bytecodeIndex(),  divot, startOffset,  endOffset,line, column);
+            CodeLocationLabel<DisassemblyPtrTag> offsetLocation = linkBuffer.locationOf<DisassemblyPtrTag>(previousLabel);
+            if (entry.codeAddress != offsetLocation.dataLocation<uintptr_t>()) {
+                // we only want to add an entry if the next offset is different from the last.
+                // this lets us skip over nodes that don't have any associated instructions
+                result.append(entry);
+            }
+            entry.codeAddress = offsetLocation.dataLocation<uintptr_t>();
+            entry.line = line;
+            entry.discrim = column;
+
+            uintptr_t offset = offsetLocation.dataLocation<uintptr_t>() - startOfCodeLocation.dataLocation<uintptr_t>();
+	    out.printf("src %lx:\n", offset);
+	    out.print("src[", m_graph.m_codeBlock->ownerExecutable()->sourceURL(), "], (", previousOrigin.bytecodeIndex().offset(), "): ", divot, ", ", startOffset, ", ", endOffset, ", ", line, ", ", column, "\n");
+	    m_graph.m_codeBlock->dumpBytecode(out, previousOrigin.bytecodeIndex().offset());
+	    if (m_graph.dumpCodeOrigin(out, prefix, lastNode, block->at(i), &m_dumpContext)) {
+		//append(result, out, previousOrigin);
+		previousOrigin = block->at(i)->origin.semantic;
+	    }
+	    m_graph.dump(out, prefix, block->at(i), &m_dumpContext);
+	    lastNode = block->at(i);
+	    //lastNodeForDisassembly = block->at(i);
+	}
+    }
+    result.append(entry);
+    dumpDisassembly(out, disassemblyPrefix, linkBuffer, previousLabel, m_endOfMainPath, lastNode);
+    //append(result, out, previousOrigin);
+    out.print(prefix, "(End Of Main Path)\n");
+    //append(result, out, previousOrigin);
+    dumpDisassembly(out, disassemblyPrefix, linkBuffer, previousLabel, m_endOfCode, nullptr);
+    //append(result, out, previousOrigin);
+    m_dumpContext.dump(out, prefix);
+    //append(result, out, previousOrigin);
+
+    PerfLog& logger = PerfLog::singleton();
+    Locker locker { logger.m_lock };
+
+    JITDump::CodeDebugInfoRecord record;
+    record.header.timestamp = generateTimestamp();
+    record.header.totalSize = sizeof(JITDump::CodeDebugInfoRecord) + (sizeof(JITDump::DebugEntry) + srcFile.length() + 1)*result.size();
+    record.codeAddress = startOfCodeLocation.dataLocation<uintptr_t>();
+    record.nrEntry = result.size();
+   
+    printf("dumpLines\n");
+    logger.write(&record, sizeof(JITDump::CodeDebugInfoRecord));
+    for (auto &entry : result) {
+        logger.write(&entry, sizeof(JITDump::DebugEntry));
+        logger.write(srcFile.data(), srcFile.length() + 1);
+    }
+    logger.flush();
+
+ 
 }
 
 void Disassembler::dumpDisassembly(PrintStream& out, const char* prefix, LinkBuffer& linkBuffer, MacroAssembler::Label& previousLabel, MacroAssembler::Label currentLabel, Node* context)
