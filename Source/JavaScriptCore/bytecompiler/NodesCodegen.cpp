@@ -4542,8 +4542,8 @@ void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     RefPtr<RegisterID> returnRegister = m_value ? generator.emitNodeInTailPosition(dst, m_value) : generator.emitLoad(dst, jsUndefined());
 
+    generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     generator.emitProfileType(returnRegister.get(), ProfileTypeBytecodeFunctionReturnStatement, divotStart(), divotEnd());
-
     bool hasFinally = generator.emitReturnViaFinallyIfNeeded(returnRegister.get());
     if (!hasFinally) {
         if (generator.parseMode() == SourceParseMode::AsyncGeneratorBodyMode) {
