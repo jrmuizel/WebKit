@@ -32,6 +32,7 @@
 #include "DFGNode.h"
 #include "LinkBuffer.h"
 #include "WasmOpcodeOrigin.h"
+#include "PerfLog.h"
 
 #if COMPILER(MSVC)
 // See https://msdn.microsoft.com/en-us/library/4wz07268.aspx
@@ -318,6 +319,93 @@ std::optional<CodeOrigin> PCToCodeOriginMap::findPC(void* pc) const
 
     RELEASE_ASSERT_NOT_REACHED();
     return std::nullopt;
+}
+
+void PCToCodeOriginMap::dump(CodeBlock &codeBlock) const
+{
+    //uintptr_t pcAsInt = bitwise_cast<uintptr_t>(pc);
+    //if (!(m_pcRangeStart <= pcAsInt && pcAsInt <= m_pcRangeEnd))
+     //   return std::nullopt;
+
+    uintptr_t currentPC = 0;
+    BytecodeIndex currentBytecodeIndex = BytecodeIndex(0);
+    InlineCallFrame* currentInlineCallFrame = nullptr;
+
+    DeltaCompresseionReader pcReader(m_compressedPCs, m_compressedPCBufferSize);
+    DeltaCompresseionReader codeOriginReader(m_compressedCodeOrigins, m_compressedCodeOriginsSize);
+    CString srcFile = codeBlock.ownerExecutable()->sourceURL().ascii();
+
+    Vector<JITDump::DebugEntry> result;
+
+
+    while (currentPC < m_pcRangeEnd) {
+        uintptr_t previousPC = currentPC;
+        {
+            uint8_t value = pcReader.read<uint8_t>();
+            uintptr_t delta;
+            if (value == sentinelPCDelta)
+                delta = pcReader.read<uintptr_t>();
+            else
+                delta = value;
+            currentPC += delta;
+        }
+
+        CodeOrigin previousOrigin = CodeOrigin(currentBytecodeIndex, currentInlineCallFrame);
+        {
+            int8_t value = codeOriginReader.read<int8_t>();
+            intptr_t delta;
+            if (value == sentinelBytecodeDelta)
+                delta = codeOriginReader.read<intptr_t>();
+            else
+                delta = static_cast<intptr_t>(value);
+
+            currentBytecodeIndex = BytecodeIndex(static_cast<intptr_t>(currentBytecodeIndex.offset()) + delta);
+
+            int8_t hasInlineFrame = codeOriginReader.read<int8_t>();
+            ASSERT(hasInlineFrame == 0 || hasInlineFrame == 1);
+            if (hasInlineFrame)
+                currentInlineCallFrame = bitwise_cast<InlineCallFrame*>(codeOriginReader.read<uintptr_t>());
+            else
+                currentInlineCallFrame = nullptr;
+        }
+
+        if (previousPC) {
+            uintptr_t startOfRange = previousPC;
+            // We subtract 1 because we generate end points inclusively in this table, even though we are interested in ranges of the form: [previousPC, currentPC)
+            uintptr_t endOfRange = currentPC - 1;
+            int divot; int startOffset; int endOffset; unsigned line; unsigned column;
+	    //out.print("slrc[", m_graph.m_codeBlock->ownerExecutable()->sourceURL(), "], (", previousOrigin.bytecodeIndex().offset(), "): ", divot, ", ", startOffset, ", ", endOffset, ", ", line, ", ", column, "\n");
+            codeBlock.expressionRangeForBytecodeIndex(previousOrigin.bytecodeIndex(),  divot, startOffset,  endOffset,line, column);
+            printf("%lx %lx %s %d:%d\n", startOfRange, endOfRange, srcFile.data(), line, column);
+     
+            JITDump::DebugEntry entry;
+            entry.codeAddress = startOfRange;
+            entry.line = line;
+            entry.discrim = column;
+            result.append(entry);
+        }
+    }
+
+    PerfLog& logger = PerfLog::singleton();
+    Locker locker { logger.m_lock };
+
+    JITDump::CodeDebugInfoRecord record;
+    record.header.timestamp = generateTimestamp();
+    record.header.totalSize = sizeof(JITDump::CodeDebugInfoRecord) + (sizeof(JITDump::DebugEntry) + srcFile.length() + 1)*result.size();
+    record.codeAddress = m_pcRangeStart;
+    record.nrEntry = result.size();
+   
+    printf("dumpPcLines\n");
+    logger.write(&record, sizeof(JITDump::CodeDebugInfoRecord));
+    for (auto &entry : result) {
+        logger.write(&entry, sizeof(JITDump::DebugEntry));
+        logger.write(srcFile.data(), srcFile.length() + 1);
+    }
+    logger.flush();
+
+
+    //RELEASE_ASSERT_NOT_REACHED();
+    //return std::nullopt;*/
 }
 
 } // namespace JSC

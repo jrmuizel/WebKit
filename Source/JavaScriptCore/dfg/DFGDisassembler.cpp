@@ -159,7 +159,7 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
     return result;
 }
 
-void Disassembler::dumpLines(LinkBuffer& linkBuffer)
+void Disassembler::dumpLines(LinkBuffer& linkBuffer, JITCode& jitCode)
 {
 
    //record.codeAddress = bitwise_cast<uintptr_t>(executableAddress);
@@ -182,15 +182,20 @@ void Disassembler::dumpLines(LinkBuffer& linkBuffer)
     MacroAssembler::Label previousLabel = m_startOfCode;
     CodeLocationLabel<DisassemblyPtrTag> startOfCodeLocation = linkBuffer.locationOf<DisassemblyPtrTag>(m_startOfCode);
     CString srcFile = m_graph.m_codeBlock->ownerExecutable()->sourceURL().ascii();
-		JITDump::DebugEntry entry;
-	    {
-		int divot; int startOffset; int endOffset; unsigned line; unsigned column;
-		m_graph.m_codeBlock->expressionRangeForBytecodeIndex(BytecodeIndex(0),  divot, startOffset,  endOffset,line, column);
-		entry.codeAddress = startOfCodeLocation.dataLocation<uintptr_t>();
-		entry.line = line;
-		entry.discrim = column;
-		result.append(entry);
-	    }
+    JITDump::DebugEntry entry;
+    {
+        int divot; int startOffset; int endOffset; unsigned line; unsigned column;
+        m_graph.m_codeBlock->expressionRangeForBytecodeIndex(BytecodeIndex(0),  divot, startOffset,  endOffset,line, column);
+        entry.codeAddress = startOfCodeLocation.dataLocation<uintptr_t>();
+        entry.line = line;
+        entry.discrim = column;
+        result.append(entry);
+    }
+    if (jitCode.pcToCodeOriginMap()) {
+        jitCode.pcToCodeOriginMap()->dump(*m_graph.m_codeBlock);
+    } else {
+        printf("no pc map\n");
+    }
 
     for (size_t blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
         BasicBlock* block = m_graph.block(blockIndex);
@@ -222,18 +227,32 @@ void Disassembler::dumpLines(LinkBuffer& linkBuffer)
             int divot; int startOffset; int endOffset; unsigned line; unsigned column;
             m_graph.m_codeBlock->expressionRangeForBytecodeIndex(previousOrigin.bytecodeIndex(),  divot, startOffset,  endOffset,line, column);
             CodeLocationLabel<DisassemblyPtrTag> offsetLocation = linkBuffer.locationOf<DisassemblyPtrTag>(previousLabel);
+            /*if (jitCode.pcToCodeOriginMap()) {
+                    std::optional<CodeOrigin> o =  jitCode.pcToCodeOriginMap()->findPC(offsetLocation.dataLocation<void*>());
+                    if (o) {
+                            if (o->bytecodeIndex() != previousOrigin.bytecodeIndex()) {
+                                    printf("Bad\n");
+                            } else {
+                                    printf("bytecode index match\n");
+                            }
+                    } else {
+                            printf("missing\n");
+                    }
+            } else {
+                    printf("missing map\n");
+            }*/
             if (entry.codeAddress != offsetLocation.dataLocation<uintptr_t>()) {
-                // we only want to add an entry if the next offset is different from the last.
-                // this lets us skip over nodes that don't have any associated instructions
-                result.append(entry);
+                    // we only want to add an entry if the next offset is different from the last.
+                    // this lets us skip over nodes that don't have any associated instructions
+                    result.append(entry);
             }
             entry.codeAddress = offsetLocation.dataLocation<uintptr_t>();
             entry.line = line;
             entry.discrim = column;
 
             uintptr_t offset = offsetLocation.dataLocation<uintptr_t>() - startOfCodeLocation.dataLocation<uintptr_t>();
-	    out.printf("src %lx:\n", offset);
-	    out.print("src[", m_graph.m_codeBlock->ownerExecutable()->sourceURL(), "], (", previousOrigin.bytecodeIndex().offset(), "): ", divot, ", ", startOffset, ", ", endOffset, ", ", line, ", ", column, "\n");
+	    out.printf("slrc %lx:\n", offset);
+	    out.print("slrc[", m_graph.m_codeBlock->ownerExecutable()->sourceURL(), "], (", previousOrigin.bytecodeIndex().offset(), "): ", divot, ", ", startOffset, ", ", endOffset, ", ", line, ", ", column, "\n");
 	    m_graph.m_codeBlock->dumpBytecode(out, previousOrigin.bytecodeIndex().offset());
 	    if (m_graph.dumpCodeOrigin(out, prefix, lastNode, block->at(i), &m_dumpContext)) {
 		//append(result, out, previousOrigin);

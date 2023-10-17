@@ -42,6 +42,7 @@ class PCToOriginMap;
 
 class LinkBuffer;
 class PCToCodeOriginMapBuilder;
+class CodeBlock;
 
 class PCToCodeOriginMapBuilder {
     WTF_MAKE_FAST_ALLOCATED;
@@ -97,6 +98,7 @@ public:
     ~PCToCodeOriginMap();
 
     std::optional<CodeOrigin> findPC(void* pc) const;
+    void dump(CodeBlock& codeBlock) const;
 
     double memorySize();
 

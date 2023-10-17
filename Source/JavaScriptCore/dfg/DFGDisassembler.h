@@ -43,6 +43,7 @@ class LinkBuffer;
 namespace DFG {
 
 class Graph;
+class JITCode;
 
 class Disassembler {
     WTF_MAKE_FAST_ALLOCATED;
@@ -70,7 +71,7 @@ public:
     
     void dump(PrintStream&, LinkBuffer&);
     void dump(LinkBuffer&);
-    void dumpLines(LinkBuffer&);
+    void dumpLines(LinkBuffer&, JITCode& jitCode);
     void reportToProfiler(Profiler::Compilation*, LinkBuffer&);
     
 private:
