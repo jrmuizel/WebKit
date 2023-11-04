@@ -169,7 +169,7 @@ void Disassembler::dumpLines(LinkBuffer& linkBuffer, JITCode& jitCode)
     Vector<JITDump::DebugEntry> result;
     
     CodeOrigin previousOrigin = CodeOrigin();
-    dumpHeader(out, linkBuffer);
+    //dumpHeader(out, linkBuffer);
     //append(result, out, previousOrigin);
     
     m_graph.ensureCPSDominators();
