@@ -545,6 +545,7 @@ ArgumentListNode* ArrayNode::toArgumentList(ParserArena& parserArena, int lineNu
 
 RegisterID* ObjectLiteralNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
+    generator.emitExpressionInfo(position(), position(), position());
     if (!m_list) {
         if (dst == generator.ignoredResult())
             return nullptr;
