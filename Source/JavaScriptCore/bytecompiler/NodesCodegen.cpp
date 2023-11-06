@@ -4342,6 +4342,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         emitThrowReferenceError(generator, "Left side of for-in statement is not a reference."_s);
         return;
     }
+    generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
 
     if (generator.shouldBeConcernedWithCompletionValue() && m_statement->hasEarlyBreakOrContinue())
         generator.emitLoad(dst, jsUndefined());
