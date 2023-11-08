@@ -196,6 +196,7 @@ void Disassembler::dumpLines(LinkBuffer& linkBuffer, JITCode& jitCode)
     } else {
         printf("no pc map\n");
     }
+    return;
 
     for (size_t blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
         BasicBlock* block = m_graph.block(blockIndex);
