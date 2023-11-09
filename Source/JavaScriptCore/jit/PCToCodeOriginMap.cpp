@@ -225,6 +225,10 @@ PCToCodeOriginMap::PCToCodeOriginMap(PCToCodeOriginMapBuilder&& builder, LinkBuf
 
     m_pcRangeStart = linkBuffer.locationOf<NoPtrTag>(builder.m_codeRanges.first().start).dataLocation<uintptr_t>();
     m_pcRangeEnd = linkBuffer.locationOf<NoPtrTag>(builder.m_codeRanges.last().end).dataLocation<uintptr_t>();
+    //printf("make map: %p %p %p\n", m_pcRangeStart, CodeRef<LinkBufferPtrTag>(*linkBuffer.m_executableMemory), linkBuffer.m_code.untaggedPtr<const uint8_t*>());
+
+    m_codeStart = (uintptr_t)linkBuffer.debugAddress();
+    printf("make map: %lx %p\n", m_pcRangeStart, linkBuffer.debugAddress());
     m_pcRangeEnd -= 1;
 
     for (unsigned i = 0; i < builder.m_codeRanges.size(); i++) {
@@ -392,10 +396,10 @@ void PCToCodeOriginMap::dump(CodeBlock &codeBlock) const
     JITDump::CodeDebugInfoRecord record;
     record.header.timestamp = generateTimestamp();
     record.header.totalSize = sizeof(JITDump::CodeDebugInfoRecord) + (sizeof(JITDump::DebugEntry) + srcFile.length() + 1)*result.size();
-    record.codeAddress = m_pcRangeStart;
+    record.codeAddress = m_codeStart;
     record.nrEntry = result.size();
    
-    printf("dumpPcLines\n");
+    printf("dumpPcLines %lu %lx %s\n", result.size(), m_pcRangeStart, codeBlock.ownerExecutable()->sourceURL().ascii().data());
     logger.write(&record, sizeof(JITDump::CodeDebugInfoRecord));
     for (auto &entry : result) {
         logger.write(&entry, sizeof(JITDump::DebugEntry));

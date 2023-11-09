@@ -63,6 +63,9 @@ bool JITFinalizer::finalize()
     VM& vm = *m_plan.vm();
     WTF::crossModifyingCodeFence();
 
+    if (vm.shouldBuilderPCToCodeOriginMapping()) {
+//    jitCode->common.m_pcToCodeOriginMap->dump(*m_plan.codeBlock());
+    }
     b3CodeLinkBuffer->runMainThreadFinalizationTasks();
 
     CodeBlock* codeBlock = m_plan.codeBlock();

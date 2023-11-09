@@ -163,9 +163,10 @@ void SpeculativeJIT::compile()
 
     disassemble(*linkBuffer);
 
-    if (shouldDumpDisassembly()) {
-      m_disassembler->dumpLines(*linkBuffer, *m_jitCode);
-    }
+    //if (shouldDumpDisassembly()) {
+    //  m_disassembler->dumpLines(*linkBuffer, *m_jitCode);
+    m_jitCode->pcToCodeOriginMap()->dump(*m_codeBlock);
+    //}
 
     auto codeRef = FINALIZE_DFG_CODE(*linkBuffer, JSEntryPtrTag, "DFG JIT code for %s", toCString(CodeBlockWithJITType(m_codeBlock, JITType::DFGJIT)).data());
     m_jitCode->initializeCodeRefForDFG(codeRef, codeRef.code());
@@ -269,9 +270,10 @@ void SpeculativeJIT::compileFunction()
 
     disassemble(*linkBuffer);
 
-    if (shouldDumpDisassembly()) {
-      m_disassembler->dumpLines(*linkBuffer, *m_jitCode);
-    }
+    //if (shouldDumpDisassembly()) {
+      //m_disassembler->dumpLines(*linkBuffer, *m_jitCode);
+    //}
+    m_jitCode->pcToCodeOriginMap()->dump(*m_codeBlock);
     CodePtr<JSEntryPtrTag> withArityCheck = linkBuffer->locationOf<JSEntryPtrTag>(arityCheck);
 
     m_jitCode->initializeCodeRefForDFG(

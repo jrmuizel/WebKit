@@ -99,6 +99,9 @@ public:
 
     std::optional<CodeOrigin> findPC(void* pc) const;
     void dump(CodeBlock& codeBlock) const;
+    uintptr_t codeStart() {
+            return m_codeStart;
+    }
 
     double memorySize();
 
@@ -107,6 +110,7 @@ private:
     size_t m_compressedCodeOriginsSize;
     uint8_t* m_compressedPCs;
     uint8_t* m_compressedCodeOrigins;
+    uintptr_t m_codeStart;
     uintptr_t m_pcRangeStart;
     uintptr_t m_pcRangeEnd;
 };

@@ -135,6 +135,12 @@ void compile(State& state, Safepoint::Result& safepointResult)
             linkBuffer.link(handler, CodeLocationLabel(vmPtr->getCTIStub(handleExceptionGenerator).retaggedCode<NoPtrTag>()));
         });
 
+    RefPtr<JITCode> jitCode = state.jitCode;
+    jit.addLateLinkTask(
+        [=] (LinkBuffer&) {
+            jitCode->common.m_pcToCodeOriginMap->dump(*codeBlock);
+        });
+
     state.finalizer->b3CodeLinkBuffer = makeUnique<LinkBuffer>(jit, codeBlock, LinkBuffer::Profile::FTL, JITCompilationCanFail);
 
     if (state.finalizer->b3CodeLinkBuffer->didFailToAllocate()) {
@@ -145,7 +151,11 @@ void compile(State& state, Safepoint::Result& safepointResult)
     if (vm.shouldBuilderPCToCodeOriginMapping()) {
         B3::PCToOriginMap originMap = state.proc->releasePCToOriginMap();
         state.jitCode->common.m_pcToCodeOriginMap = makeUnique<PCToCodeOriginMap>(PCToCodeOriginMapBuilder(PCToCodeOriginMapBuilder::JSCodeOriginMap, vm, WTFMove(originMap)), *state.finalizer->b3CodeLinkBuffer);
+        printf("building ftl map\n");
+    } else {
+        printf("no FTL pc map\n");
     }
+
 
     CodeLocationLabel<JSEntryPtrTag> label = state.finalizer->b3CodeLinkBuffer->locationOf<JSEntryPtrTag>(state.proc->code().entrypointLabel(0));
     state.generatedFunction = label;
@@ -162,6 +172,9 @@ void compile(State& state, Safepoint::Result& safepointResult)
     if (shouldDumpDisassembly())
         state.dumpDisassembly(WTF::dataFile());
 
+    if (vm.shouldBuilderPCToCodeOriginMapping()) {
+        //state.jitCode->common.m_pcToCodeOriginMap->dump(*graph.m_codeBlock);
+    }
     Profiler::Compilation* compilation = graph.compilation();
     if (UNLIKELY(compilation)) {
         compilation->addDescription(
