@@ -80,6 +80,7 @@ set(WTF_PUBLIC_HEADERS
     FastMalloc.h
     FastTLS.h
     FilePrintStream.h
+    FileLineNumberingPrintStream.h
     FileSystem.h
     FixedBitVector.h
     FixedVector.h
@@ -451,6 +452,7 @@ set(WTF_SOURCES
     FastFloat.cpp
     FastMalloc.cpp
     FilePrintStream.cpp
+    FileLineNumberingPrintStream.cpp
     FileSystem.cpp
     FunctionDispatcher.cpp
     Gigacage.cpp
