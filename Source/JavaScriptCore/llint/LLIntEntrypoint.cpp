@@ -52,12 +52,30 @@ static MacroAssemblerCodeRef<JSEntryPtrTag> entrypointTrampoline(PtrType address
 }
 #endif
 
+#if ENABLE(JIT)
+static bool setProfilerEntrypoint(CodeBlock* codeBlock, LLIntProfilerThunkKind kind)
+{
+    CodePtr<JSEntryPtrTag> arityCheck;
+    auto thunk = llintProfilerEntryThunk(codeBlock, kind, &arityCheck);
+    if (!thunk)
+        return false;
+    codeBlock->setLLIntProfilerThunk(thunk);
+    if (kind == LLIntProfilerThunkKind::FunctionForCall || kind == LLIntProfilerThunkKind::FunctionForConstruct)
+        codeBlock->setJITCode(adoptRef(*new DirectJITCode(thunk, arityCheck, JITType::InterpreterThunk)));
+    else
+        codeBlock->setJITCode(adoptRef(*new NativeJITCode(thunk, JITType::InterpreterThunk, Intrinsic::NoIntrinsic)));
+    return true;
+}
+#endif
+
 static void setFunctionEntrypoint(CodeBlock* codeBlock)
 {
     CodeSpecializationKind kind = codeBlock->specializationKind();
     
 #if ENABLE(JIT)
     if (Options::useJIT()) {
+        if (shouldUseLLIntProfilerThunks() && setProfilerEntrypoint(codeBlock, kind == CodeSpecializationKind::CodeForCall ? LLIntProfilerThunkKind::FunctionForCall : LLIntProfilerThunkKind::FunctionForConstruct))
+            return;
         if (kind == CodeSpecializationKind::CodeForCall) {
             static DirectJITCode* jitCode;
             static std::once_flag onceKey;
@@ -114,6 +132,8 @@ static void setEvalEntrypoint(CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
     if (Options::useJIT()) {
+        if (shouldUseLLIntProfilerThunks() && setProfilerEntrypoint(codeBlock, LLIntProfilerThunkKind::Eval))
+            return;
         static NativeJITCode* jitCode;
         static std::once_flag onceKey;
         std::call_once(onceKey, [&] {
@@ -141,6 +161,8 @@ static void setProgramEntrypoint(CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
     if (Options::useJIT()) {
+        if (shouldUseLLIntProfilerThunks() && setProfilerEntrypoint(codeBlock, LLIntProfilerThunkKind::Program))
+            return;
         static NativeJITCode* jitCode;
         static std::once_flag onceKey;
         std::call_once(onceKey, [&] {
@@ -168,6 +190,8 @@ static void setModuleProgramEntrypoint(CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
     if (Options::useJIT()) {
+        if (shouldUseLLIntProfilerThunks() && setProfilerEntrypoint(codeBlock, LLIntProfilerThunkKind::ModuleProgram))
+            return;
         static NativeJITCode* jitCode;
         static std::once_flag onceKey;
         std::call_once(onceKey, [&] {

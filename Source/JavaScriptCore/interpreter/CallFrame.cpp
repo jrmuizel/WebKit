@@ -175,6 +175,32 @@ CallFrame* CallFrame::callerFrame(EntryFrame*& currEntryFrame) const
     return static_cast<CallFrame*>(callerFrameOrEntryFrame());
 }
 
+CallFrame* CallFrame::callerFrameSkippingLLIntProfilerThunks(EntryFrame*& currEntryFrame, void** thunkReturnPC) const
+{
+    EntryFrame* entryFrame = currEntryFrame;
+    CallFrame* caller = callerFrame(currEntryFrame);
+#if ENABLE(JIT)
+    if (!Options::useJITDump()) [[likely]]
+        return caller;
+    // Tail calls out of a frame entered through a thunk jump into the next
+    // callee's thunk, so thunk frames can be chained.
+    const CallFrame* frame = this;
+    while (caller && currEntryFrame == entryFrame && !caller->isNativeCalleeFrame()) {
+        CodeBlock* codeBlock = caller->codeBlock();
+        if (!codeBlock || !codeBlock->isLLIntProfilerThunkReturnPC(frame->rawReturnPC()))
+            break;
+        if (thunkReturnPC)
+            *thunkReturnPC = caller->rawReturnPC();
+        frame = caller;
+        caller = caller->callerFrame(currEntryFrame);
+    }
+#else
+    UNUSED_PARAM(thunkReturnPC);
+    UNUSED_VARIABLE(entryFrame);
+#endif
+    return caller;
+}
+
 SUPPRESS_ASAN CallFrame* CallFrame::unsafeCallerFrame(EntryFrame*& currEntryFrame) const
 {
     if (unsafeCallerFrameOrEntryFrame() == currEntryFrame) {

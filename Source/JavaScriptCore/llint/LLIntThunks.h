@@ -87,6 +87,17 @@ MacroAssemblerCodeRef<JSEntryPtrTag> functionForConstructArityCheckThunk();
 MacroAssemblerCodeRef<JSEntryPtrTag> evalEntryThunk();
 MacroAssemblerCodeRef<JSEntryPtrTag> programEntryThunk();
 MacroAssemblerCodeRef<JSEntryPtrTag> moduleProgramEntryThunk();
+
+// Per-CodeBlock entry thunks used when profiling with JITDump (see
+// Options::useJITDump()), so that native profilers can attribute LLInt frames
+// to functions. Each thunk builds its own frame and calls the shared LLInt
+// prologue, leaving a return address unique to the CodeBlock on the stack.
+// StackVisitor skips these frames (see CodeBlock::isLLIntProfilerThunkReturnPC).
+bool shouldUseLLIntProfilerThunks();
+enum class LLIntProfilerThunkKind : uint8_t { FunctionForCall, FunctionForConstruct, Eval, Program, ModuleProgram };
+// For function kinds, |arityCheckEntry| receives the entry point that calls the
+// arity check prologue. Returns a null CodeRef on allocation failure.
+MacroAssemblerCodeRef<JSEntryPtrTag> llintProfilerEntryThunk(CodeBlock*, LLIntProfilerThunkKind, CodePtr<JSEntryPtrTag>* arityCheckEntry);
 MacroAssemblerCodeRef<JSEntryPtrTag> defaultCallThunk();
 MacroAssemblerCodeRef<JSEntryPtrTag> getHostCallReturnValueThunk();
 MacroAssemblerCodeRef<JSEntryPtrTag> genericReturnPointThunk(OpcodeSize);

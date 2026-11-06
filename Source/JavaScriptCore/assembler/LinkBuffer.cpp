@@ -93,7 +93,8 @@ void LinkBuffer::logJITCodeForJITDump(CodeRef<LinkBufferPtrTag>& codeRef, ASCIIL
     switch (m_profile) {
     case Profile::Baseline:
     case Profile::DFG:
-    case Profile::FTL: {
+    case Profile::FTL:
+    case Profile::LLInt: {
         if (m_ownerUID)
             static_cast<CodeBlock*>(m_ownerUID)->dumpSimpleName(out);
         else

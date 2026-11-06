@@ -181,7 +181,7 @@ std::tuple<CodeBlock*, BytecodeIndex> getBytecodeIndex(VM& vm, CallFrame* startC
 {
     if (startCallFrame && vm.topCallFrame == startCallFrame && startCallFrame->isZombieFrame()) {
         auto* entryFrame = vm.topEntryFrame;
-        auto* callerFrame = startCallFrame->callerFrame(entryFrame);
+        auto* callerFrame = startCallFrame->callerFrameSkippingLLIntProfilerThunks(entryFrame);
         if (callerFrame)
             startCallFrame = callerFrame;
     }

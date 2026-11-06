@@ -52,7 +52,7 @@ StackVisitor::StackVisitor(CallFrame* startFrame, VM& vm, bool skipFirstFrame)
             m_previousReturnPC = vm.maybeReturnPC;
             if (skipFirstFrame || topFrame->isZombieFrame()) {
                 m_previousReturnPC = topFrame->rawReturnPC();
-                topFrame = topFrame->callerFrame(m_frame.m_entryFrame);
+                topFrame = topFrame->callerFrameSkippingLLIntProfilerThunks(m_frame.m_entryFrame, &m_previousReturnPC);
                 m_topEntryFrameIsEmpty = (m_frame.m_entryFrame != vm.topEntryFrame);
                 if (startFrame == vm.topCallFrame)
                     startFrame = topFrame;
@@ -104,11 +104,14 @@ void StackVisitor::unwindToMachineCodeBlockFrame()
 inline CallFrame* StackVisitor::updatePreviousReturnPCIfNecessary(CallFrame* callFrame)
 {
     if (m_frame.m_callFrame) {
-        if (m_frame.m_callFrame != callFrame)
-            m_previousReturnPC = m_frame.m_callFrame->rawReturnPC();
+        if (m_frame.m_callFrame != callFrame) {
+            m_previousReturnPC = m_skippedThunkFrameReturnPC ? m_skippedThunkFrameReturnPC : m_frame.m_callFrame->rawReturnPC();
+            m_skippedThunkFrameReturnPC = nullptr;
+        }
     }
     return callFrame;
 }
+
 
 void StackVisitor::readFrame(CallFrame* callFrame)
 {
@@ -176,7 +179,8 @@ void StackVisitor::readNonInlinedFrame(CallFrame* callFrame, CodeOrigin* codeOri
     m_frame.m_returnPC = m_previousReturnPC;
     m_frame.m_argumentCountIncludingThis = callFrame->argumentCountIncludingThis();
     m_frame.m_callerEntryFrame = m_frame.m_entryFrame;
-    m_frame.m_callerFrame = callFrame->callerFrame(m_frame.m_callerEntryFrame);
+    m_skippedThunkFrameReturnPC = nullptr;
+    m_frame.m_callerFrame = callFrame->callerFrameSkippingLLIntProfilerThunks(m_frame.m_callerEntryFrame, &m_skippedThunkFrameReturnPC);
     m_frame.m_callerIsEntryFrame = m_frame.m_callerEntryFrame != m_frame.m_entryFrame;
     m_frame.m_isWasmFrame = false;
     m_frame.m_callee = callFrame->callee();

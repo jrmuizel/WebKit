@@ -825,7 +825,31 @@ public:
         Vector<HandlerInfo> m_exceptionHandlers;
 
         DirectEvalCodeCache m_directEvalCodeCache;
+#if ENABLE(JIT)
+        // See LLInt::llintProfilerEntryThunk.
+        MacroAssemblerCodeRef<JSEntryPtrTag> m_llintProfilerThunk;
+#endif
     };
+
+#if ENABLE(JIT)
+    void setLLIntProfilerThunk(MacroAssemblerCodeRef<JSEntryPtrTag> thunk)
+    {
+        createRareDataIfNecessary();
+        m_rareData->m_llintProfilerThunk = WTF::move(thunk);
+    }
+
+    // Whether |returnPC| is a return address into this CodeBlock's LLInt
+    // profiler entry thunk, i.e. whether the frame owning this CodeBlock is a
+    // thunk frame that stack walking should skip.
+    bool isLLIntProfilerThunkReturnPC(const void* returnPC) const
+    {
+        if (!m_rareData || !m_rareData->m_llintProfilerThunk)
+            return false;
+        uintptr_t start = std::bit_cast<uintptr_t>(m_rareData->m_llintProfilerThunk.code().untaggedPtr());
+        uintptr_t pc = std::bit_cast<uintptr_t>(removeCodePtrTag(returnPC));
+        return pc > start && pc <= start + m_rareData->m_llintProfilerThunk.size();
+    }
+#endif
 
     void clearExceptionHandlers()
     {

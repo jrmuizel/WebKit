@@ -136,6 +136,7 @@ public:
     v(Baseline) \
     v(DFG) \
     v(FTL) \
+    v(LLInt) \
     v(DFGOSREntry) \
     v(DFGOSRExit) \
     v(FTLOSRExit) \

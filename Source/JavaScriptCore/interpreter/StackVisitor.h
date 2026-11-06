@@ -193,6 +193,7 @@ private:
 
     Frame m_frame;
     void* m_previousReturnPC { nullptr };
+    void* m_skippedThunkFrameReturnPC { nullptr };
     bool m_topEntryFrameIsEmpty { false };
 };
 

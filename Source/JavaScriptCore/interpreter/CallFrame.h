@@ -226,6 +226,10 @@ using JSInstruction = BaseInstruction<JSOpcodeTraits>;
 
         CallFrame* unsafeCallerFrame(EntryFrame*&) const;
         JS_EXPORT_PRIVATE CallFrame* callerFrame(EntryFrame*&) const;
+        // Like callerFrame(), but skips the frames of LLInt profiler entry
+        // thunks (see LLInt::llintProfilerEntryThunk). If any are skipped,
+        // |thunkReturnPC| receives the return address of the outermost one.
+        JS_EXPORT_PRIVATE CallFrame* callerFrameSkippingLLIntProfilerThunks(EntryFrame*&, void** thunkReturnPC = nullptr) const;
 
         JS_EXPORT_PRIVATE SourceOrigin callerSourceOrigin(VM&);
 

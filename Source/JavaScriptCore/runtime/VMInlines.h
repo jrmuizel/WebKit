@@ -92,7 +92,7 @@ inline CallFrame* VM::topJSCallFrame() const
         return frame;
     EntryFrame* entryFrame = topEntryFrame;
     do {
-        frame = frame->callerFrame(entryFrame);
+        frame = frame->callerFrameSkippingLLIntProfilerThunks(entryFrame);
         ASSERT(!frame || !frame->isZombieFrame());
     } while (frame && frame->isNativeCalleeFrame());
     return frame;

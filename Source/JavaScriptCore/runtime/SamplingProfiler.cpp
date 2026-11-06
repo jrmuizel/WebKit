@@ -169,7 +169,25 @@ protected:
     SUPPRESS_ASAN
     void advanceToParentFrame()
     {
+        CallFrame* frame = m_callFrame;
+        EntryFrame* entryFrame = m_entryFrame;
         m_callFrame = m_callFrame->unsafeCallerFrame(m_entryFrame);
+#if ENABLE(JIT)
+        // Skip the frames of LLInt profiler entry thunks, as StackVisitor does
+        // (see CallFrame::callerFrameSkippingLLIntProfilerThunks).
+        if (!Options::useJITDump()) [[likely]]
+            return;
+        while (m_callFrame && m_entryFrame == entryFrame && isValidFramePointer(m_callFrame) && !m_callFrame->unsafeCallee().isNativeCallee()) {
+            CodeBlock* codeBlock = m_callFrame->unsafeCodeBlock();
+            if (!codeBlock || !isValidCodeBlock(codeBlock) || !codeBlock->isLLIntProfilerThunkReturnPC(frame->rawReturnPC()))
+                break;
+            frame = m_callFrame;
+            m_callFrame = m_callFrame->unsafeCallerFrame(m_entryFrame);
+        }
+#else
+        UNUSED_VARIABLE(frame);
+        UNUSED_VARIABLE(entryFrame);
+#endif
     }
 
     bool LEGACY_NODELETE isAtTop() const

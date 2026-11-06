@@ -26,6 +26,7 @@
 #include "config.h"
 #include "LLIntThunks.h"
 
+#include "CodeBlock.h"
 #include "Gate.h"
 #include "InPlaceInterpreter.h"
 #include "JITOperations.h"
@@ -123,6 +124,106 @@ static MacroAssemblerCodeRef<tag> generateThunkWithJumpToPrologue(OpcodeID opcod
 
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID, LinkBuffer::Profile::LLIntThunk);
     return FINALIZE_THUNK(patchBuffer, tag, thunkKind, "LLInt %s jump to prologue thunk", thunkKind.characters());
+}
+
+bool shouldUseLLIntProfilerThunks()
+{
+#if CPU(X86_64) || (CPU(ARM64) && !CPU(ARM64E))
+    return Options::useJITDump();
+#else
+    return false;
+#endif
+}
+
+static void emitLLIntProfilerThunkEntry(JSInterfaceJIT& jit, VM& vm, OpcodeID prologue)
+{
+    LLIntCode target = LLInt::getCodeFunctionPtr<OperationPtrTag>(prologue);
+    assertIsTaggedWith<OperationPtrTag>(target);
+
+    // On entry the caller has built our callee frame header and arguments just
+    // above the return address. Build a new frame, copy everything between it
+    // and the caller's frame pointer (header, arguments and caller locals, as
+    // we can't cheaply know how many arguments there are), and call the LLInt
+    // prologue so that it sees an identical frame.
+    jit.emitFunctionPrologue();
+
+    GPRReg readPos = GPRInfo::regT0;
+    GPRReg readEnd = GPRInfo::regT1;
+    GPRReg writePos = GPRInfo::regT2;
+    GPRReg scratch = GPRInfo::regT3;
+
+    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), GPRInfo::callFrameRegister, readPos);
+    jit.loadPtr(CCallHelpers::Address(GPRInfo::callFrameRegister, OBJECT_OFFSETOF(CallerFrameAndPC, callerFrame)), readEnd);
+    jit.move(readEnd, writePos);
+    jit.subPtr(readPos, writePos);
+    // If the copy would cross the soft stack limit, don't make a thunk frame:
+    // jump to the prologue as the shared thunk does, so that its stack check
+    // throws as usual.
+    jit.move(CCallHelpers::stackPointerRegister, scratch);
+    jit.subPtr(writePos, scratch);
+    jit.loadPtr(vm.addressOfSoftStackLimit(), GPRInfo::regT4);
+    CCallHelpers::Jump enoughStack = jit.branchPtr(CCallHelpers::AboveOrEqual, scratch, GPRInfo::regT4);
+    jit.emitFunctionEpilogue();
+    jit.move(CCallHelpers::TrustedImmPtr(target), scratch);
+    jit.farJump(scratch, OperationPtrTag);
+    enoughStack.link(&jit);
+
+    jit.move(scratch, CCallHelpers::stackPointerRegister);
+    jit.move(CCallHelpers::stackPointerRegister, writePos);
+
+    CCallHelpers::Label loop = jit.label();
+    jit.loadPtr(CCallHelpers::Address(readPos), scratch);
+    jit.storePtr(scratch, CCallHelpers::Address(writePos));
+    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(void*)), readPos);
+    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(void*)), writePos);
+    jit.branchPtr(CCallHelpers::Below, readPos, readEnd).linkTo(loop, &jit);
+
+    jit.move(CCallHelpers::TrustedImmPtr(target), scratch);
+    jit.call(scratch, OperationPtrTag);
+
+    jit.emitFunctionEpilogue();
+    jit.ret();
+}
+
+MacroAssemblerCodeRef<JSEntryPtrTag> llintProfilerEntryThunk(CodeBlock* codeBlock, LLIntProfilerThunkKind kind, CodePtr<JSEntryPtrTag>* arityCheckEntry)
+{
+    OpcodeID prologue;
+    std::optional<OpcodeID> secondPrologue;
+    switch (kind) {
+    case LLIntProfilerThunkKind::FunctionForCall:
+        prologue = llint_function_for_call_prologue;
+        secondPrologue = llint_function_for_call_arity_check;
+        break;
+    case LLIntProfilerThunkKind::FunctionForConstruct:
+        prologue = llint_function_for_construct_prologue;
+        secondPrologue = llint_function_for_construct_arity_check;
+        break;
+    case LLIntProfilerThunkKind::Eval:
+        prologue = llint_eval_prologue;
+        break;
+    case LLIntProfilerThunkKind::Program:
+        prologue = llint_program_prologue;
+        break;
+    case LLIntProfilerThunkKind::ModuleProgram:
+        prologue = llint_module_program_prologue;
+        break;
+    }
+    CodePtr<JSEntryPtrTag>* secondEntry = arityCheckEntry;
+
+    JSInterfaceJIT jit;
+    emitLLIntProfilerThunkEntry(jit, codeBlock->vm(), prologue);
+    CCallHelpers::Label second;
+    if (secondPrologue) {
+        second = jit.label();
+        emitLLIntProfilerThunkEntry(jit, codeBlock->vm(), *secondPrologue);
+    }
+
+    LinkBuffer patchBuffer(jit, codeBlock, LinkBuffer::Profile::LLInt, JITCompilationCanFail);
+    if (patchBuffer.didFailToAllocate())
+        return { };
+    if (secondPrologue && secondEntry)
+        *secondEntry = patchBuffer.locationOf<JSEntryPtrTag>(second);
+    return FINALIZE_THUNK(patchBuffer, JSEntryPtrTag, "LLIntProfilerEntry"_s, "LLInt profiler entry thunk");
 }
 
 template<PtrTag tag>
